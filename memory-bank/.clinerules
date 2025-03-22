@@ -1,0 +1,202 @@
+# .clinerules - Project Intelligence for Medical Note Transcription App
+
+## Project Patterns and Preferences
+
+This file captures important patterns, preferences, and project intelligence for the Medical Note Transcription App. It will be updated as we discover new insights during development.
+
+## Code Style and Organization
+
+1. **Frontend Code Organization**
+   - Next.js App Router structure
+   - Component-based architecture
+   - TypeScript for type safety
+   - Functional components with hooks
+
+2. **Backend Code Organization**
+   - FastAPI for the transcription service
+   - RESTful API design
+   - Async/await for asynchronous operations
+   - Environment variables for configuration
+
+3. **Naming Conventions**
+   - camelCase for JavaScript/TypeScript variables and functions
+   - PascalCase for React components
+   - snake_case for Python variables and functions
+   - UPPER_CASE for constants and environment variables
+
+## Implementation Patterns
+
+1. **Audio Recording**
+   - Use Recorder.js for high-quality WAV recording
+   - Implement start/stop controls with visual feedback
+   - Display recording timer for user awareness
+   - Handle browser permissions appropriately
+
+2. **File Upload**
+   - Direct upload to Supabase Storage
+   - Show progress indicator during upload
+   - Handle upload errors with retry mechanism
+   - Generate unique file names with timestamps
+
+3. **Transcription Processing**
+   - Use ffmpeg for audio file splitting
+   - Maintain high audio quality (44.1kHz, stereo WAV)
+   - Use OpenAI GPT-4o Transcribe API for transcription
+   - Combine split transcriptions seamlessly
+   - Store results in PostgreSQL
+
+4. **Status Updates**
+   - Poll for transcription status initially
+   - Clear status indicators in the UI
+   - Appropriate error messages for failures
+   - Webhook-style updates from transcription service to frontend
+
+## User Experience Patterns
+
+1. **Mobile Compatibility**
+   - Test thoroughly on Safari for iOS
+   - Responsive design for all screen sizes
+   - Touch-friendly controls
+   - Consider battery and data usage
+
+2. **Loading States**
+   - Clear visual indicators for all async operations
+   - Disable controls during processing
+   - Status badges for transcription state (processing, completed, error)
+
+3. **Error Handling**
+   - User-friendly error messages
+   - Automatic retry for transient errors
+   - Fallback options where possible
+   - Clear next steps for user when errors occur
+
+## Development Workflow
+
+1. **Local Development**
+   - Next.js development server for frontend
+   - Local FastAPI server for transcription service
+   - Supabase project for storage and database
+   - Environment variables for configuration
+
+2. **Testing Strategy**
+   - Component tests for UI elements
+   - Integration tests for API endpoints
+   - End-to-end tests for critical flows
+   - Manual testing on mobile devices
+
+3. **Deployment Process**
+   - Vercel for frontend deployment
+   - Heroku or similar for transcription service
+   - Environment-specific configuration
+   - Ensure ffmpeg availability in deployment environment
+
+## Known Challenges and Solutions
+
+1. **Safari Audio Recording**
+   - Challenge: Safari has specific requirements for audio recording
+   - Solution: Use appropriate permissions and context
+   - Reference: Check browser compatibility before recording
+
+2. **Large File Handling**
+   - Challenge: Long recordings create large WAV files
+   - Solution: Use ffmpeg to split files into manageable chunks
+   - Reference: Maintain high quality (44.1kHz, stereo) for better transcription
+
+3. **Processing Time Expectations**
+   - Challenge: Transcription takes time, especially for long recordings
+   - Solution: Clear status updates and progress indicators
+   - Reference: Set appropriate user expectations
+
+4. **ffmpeg Dependency**
+   - Challenge: Transcription service requires ffmpeg
+   - Solution: Document dependency and ensure availability in deployment
+   - Reference: Include installation instructions in README
+
+5. **API Communication**
+   - Challenge: Frontend needs to communicate with transcription service
+   - Solution: Use Next.js API routes as a bridge
+   - Reference: Implement webhook-style updates for status changes
+
+## New Technical Insights
+
+1. **Audio Quality Considerations**
+   - High-quality audio (44.1kHz, stereo WAV) produces better transcription results
+   - This increases file size but improves accuracy for medical terminology
+   - ffmpeg provides flexible options for audio processing while maintaining quality
+
+2. **Transcription Service Architecture**
+   - FastAPI with background tasks works well for asynchronous processing
+   - Splitting audio files allows handling recordings of any length
+   - Temporary file handling requires careful cleanup to avoid resource leaks
+
+3. **Supabase Integration**
+   - Signed URLs provide secure access to stored audio files
+   - Storage policies need careful configuration for proper access control
+   - Database schema should include status tracking for transcription process
+
+4. **Error Recovery Mechanisms**
+   - Implement comprehensive error handling in the transcription service
+   - Use try/catch blocks with specific error types
+   - Update transcription status to 'error' when issues occur
+   - Provide clear error messages to the frontend
+
+## Project Evolution
+
+This section tracks key decisions and changes as the project evolves:
+
+- **Initial Setup (March 22, 2025)**: Project initialized with memory bank
+- **Technology Selection (March 22, 2025)**: Next.js, Supabase, FastAPI, OpenAI Whisper API
+- **MCP Servers (March 22, 2025)**: Created MCP servers for Supabase and Vercel integration
+- **Frontend Implementation (March 22, 2025)**: Implemented recording, upload, and transcription display
+- **Backend Implementation (March 22, 2025)**: Implemented transcription service with OpenAI integration
+- **Audio Processing (March 22, 2025)**: Added ffmpeg for high-quality audio processing
+- **API Integration (March 22, 2025)**: Connected frontend and backend with API routes
+
+## MCP Server Usage
+
+This section documents how to use the MCP servers created for this project:
+
+1. **Supabase MCP Server**
+   - Used for interacting with Supabase services (storage, database, edge functions)
+   - Requires SUPABASE_URL and SUPABASE_KEY environment variables
+   - Example usage:
+     ```
+     <use_mcp_tool>
+     <server_name>supabase</server_name>
+     <tool_name>create_bucket</tool_name>
+     <arguments>
+     {
+       "name": "medical-notes",
+       "public": false
+     }
+     </arguments>
+     </use_mcp_tool>
+     ```
+
+2. **Vercel MCP Server**
+   - Used for interacting with Vercel services (projects, deployments, domains)
+   - Requires VERCEL_TOKEN environment variable (VERCEL_TEAM_ID is optional)
+   - Example usage:
+     ```
+     <use_mcp_tool>
+     <server_name>vercel</server_name>
+     <tool_name>list_projects</tool_name>
+     <arguments>
+     {
+       "limit": 10
+     }
+     </arguments>
+     </use_mcp_tool>
+     ```
+
+## User Preferences
+
+This section captures user preferences and feedback as we gather it:
+
+- Preference for high-quality audio transcription over faster processing
+- Need for clear status indicators during transcription process
+- Importance of mobile compatibility, especially on Safari
+
+---
+
+Note: This .clinerules file is a living document that will grow and evolve as we work on the project. It captures project intelligence that might not be obvious from the code alone.
