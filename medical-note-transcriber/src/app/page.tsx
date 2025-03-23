@@ -2,11 +2,11 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-center font-mono text-sm flex flex-col">
-        <h1 className="text-4xl font-bold mb-8">Medical Note Transcription App</h1>
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 lg:p-8">
+      <div className="max-w-5xl w-full items-center justify-center flex flex-col">
+        <h1 className="text-3xl lg:text-4xl font-bold mb-6 text-center">Medical Note Transcription App</h1>
         
-        <p className="text-xl mb-8 text-center max-w-2xl">
+        <p className="text-lg lg:text-xl mb-8 text-center max-w-2xl">
           Record high-quality audio notes and get them transcribed automatically.
         </p>
         
@@ -26,6 +26,6 @@ export default function Home() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
