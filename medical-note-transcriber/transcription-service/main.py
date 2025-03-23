@@ -25,8 +25,8 @@ openai_client = openai.OpenAI(api_key=openai_api_key)
 # Initialize FastAPI app
 app = FastAPI(
     title="Medical Note Transcription Service",
-    description="A service for transcribing medical audio notes using OpenAI's GPT-4o Transcribe API",
-    version="1.0.0",
+    description="A service for transcribing medical audio notes using OpenAI's latest GPT-4o Transcribe API with language selection",
+    version="1.0.1",
 )
 
 class TranscriptionRequest(BaseModel):
@@ -87,14 +87,24 @@ async def transcribe_chunk(chunk_path, language="en") -> Optional[str]:
     """Transcribe a single audio chunk using OpenAI API."""
     try:
         with open(chunk_path, "rb") as audio_file:
-            transcription = openai_client.audio.transcriptions.create(
-                model="whisper-1",  # Using whisper-1 model as fallback
+            transcription_response = openai_client.audio.transcriptions.create(
+                model="gpt-4o-transcribe",  # Using the latest model for better accuracy
                 file=audio_file,
                 language=language,
-                response_format="text",
+                response_format="json",  # Required for gpt-4o-transcribe
+                include=["logprobs"],  # Get confidence scores
                 temperature=0,  # Lower temperature for more deterministic results
+                timestamp_granularities=["segment"]  # Get segment timestamps
             )
-            return transcription
+            
+            # Extract the text from the JSON response
+            if isinstance(transcription_response, dict) and "text" in transcription_response:
+                return transcription_response["text"]
+            elif hasattr(transcription_response, "text"):
+                return transcription_response.text
+            else:
+                print(f"Unexpected response format: {transcription_response}")
+                return str(transcription_response)
     except Exception as e:
         print(f"Error transcribing chunk {chunk_path}: {str(e)}")
         return None
