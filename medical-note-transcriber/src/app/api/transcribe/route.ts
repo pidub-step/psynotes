@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Get language parameter, default to English if not provided
+    const language = body.language || 'en';
+    
     // Get a signed URL for the file
     const { data: urlData, error: urlError } = await supabase.storage
       .from('medical-notes')
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         file_id: body.file_id,
         file_url: urlData.signedUrl,
+        language: language,
       }),
     });
     

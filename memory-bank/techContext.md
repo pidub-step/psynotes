@@ -30,6 +30,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Integration with Supabase services
    - Storage operations for audio files
    - Database operations for transcriptions
+   - Realtime subscriptions for live updates
    - Version: Latest
 
 ### Backend Technologies
@@ -38,7 +39,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - **Storage**: For audio file storage
    - **PostgreSQL**: For transcription data
    - **Edge Functions**: For serverless event handling
-   - **Realtime**: Optional for status updates
+   - **Realtime**: For real-time status updates
    - Version: Latest
 
 2. **Python FastAPI**
@@ -55,10 +56,11 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Cost-effective at $0.006/minute
    - Version: whisper-1
 
-4. **pydub**
-   - Audio processing library for Python
+4. **ffmpeg**
+   - Audio processing library
    - Splitting long audio files
    - Format conversion if needed
+   - High-quality audio processing
    - Version: Latest
 
 ### Deployment Platforms
@@ -90,11 +92,16 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Recommended version: Python 3.8 or later
    - Installation: [Python Download](https://www.python.org/downloads/)
 
-3. **Supabase Account**
+3. **ffmpeg**
+   - Required for audio processing
+   - Installation: `brew install ffmpeg` (macOS) or equivalent for other platforms
+   - Verify installation: `ffmpeg -version`
+
+4. **Supabase Account**
    - Required for storage and database
    - Setup: [Supabase Dashboard](https://supabase.com/dashboard)
 
-4. **OpenAI Account**
+5. **OpenAI Account**
    - Required for Whisper API access
    - Setup: [OpenAI Platform](https://platform.openai.com/)
 
@@ -117,16 +124,54 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
 2. **Supabase Configuration**
    ```javascript
-   // lib/supabase.js
+   // lib/supabase.ts
    import { createClient } from '@supabase/supabase-js'
    
-   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
    
    export const supabase = createClient(supabaseUrl, supabaseKey)
    ```
 
-3. **Transcription Service Setup**
+3. **Supabase Realtime Setup**
+   ```javascript
+   // Example Realtime subscription
+   const subscription = supabase
+     .channel('transcriptions-changes')
+     .on('postgres_changes', { 
+       event: 'INSERT', 
+       schema: 'public', 
+       table: 'transcriptions' 
+     }, (payload) => {
+       // Handle INSERT event
+       setTranscriptions(current => [payload.new as Transcription, ...current]);
+     })
+     .on('postgres_changes', { 
+       event: 'UPDATE', 
+       schema: 'public', 
+       table: 'transcriptions' 
+     }, (payload) => {
+       // Handle UPDATE event
+       setTranscriptions(current => 
+         current.map(item => 
+           item.id === payload.new.id ? (payload.new as Transcription) : item
+         )
+       );
+     })
+     .on('postgres_changes', { 
+       event: 'DELETE', 
+       schema: 'public', 
+       table: 'transcriptions' 
+     }, (payload) => {
+       // Handle DELETE event
+       setTranscriptions(current => 
+         current.filter(item => item.id !== payload.old.id)
+       );
+     })
+     .subscribe();
+   ```
+
+4. **Transcription Service Setup**
    ```bash
    # Create directory for service
    mkdir transcription-service
@@ -137,13 +182,13 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    
    # Install dependencies
-   pip install fastapi uvicorn openai pydub requests python-dotenv
+   pip install fastapi uvicorn openai requests python-dotenv
    
    # Start development server
    uvicorn main:app --reload
    ```
 
-4. **Environment Variables**
+5. **Environment Variables**
    - Frontend (.env.local):
      ```
      NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
@@ -154,7 +199,22 @@ The Medical Note Transcription App uses a modern technology stack designed for s
      OPENAI_API_KEY=your-openai-api-key
      SUPABASE_URL=your-supabase-url
      SUPABASE_SERVICE_KEY=your-supabase-service-key
+     PORT=8000
+     HOST=0.0.0.0
      ```
+
+6. **Next.js Configuration**
+   ```typescript
+   // next.config.ts
+   import type { NextConfig } from "next";
+
+   const nextConfig: NextConfig = {
+     /* config options here */
+     reactStrictMode: false, // Disable Strict Mode to prevent double-rendering in development
+   };
+
+   export default nextConfig;
+   ```
 
 ## Technical Constraints and Considerations
 
@@ -180,6 +240,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Storage quotas based on plan
    - Database connection limits
    - Edge Function execution time limits
+   - Realtime subscription limits
 
 ### Performance Considerations
 
@@ -197,6 +258,11 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Storage space for temporary files
    - Network reliability for uploads
 
+4. **UI Performance**
+   - Realtime updates vs. polling trade-offs
+   - React rendering optimizations
+   - Optimistic UI updates for better user experience
+
 ## Dependencies and External Services
 
 ### Core Dependencies
@@ -208,12 +274,13 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - recorder-js: ^latest
    - @supabase/supabase-js: ^latest
    - shadcn/ui: ^latest
+   - lucide-react: ^latest (for icons)
 
 2. **Backend Dependencies**
    - fastapi: ^latest
    - uvicorn: ^latest
    - openai: ^latest
-   - pydub: ^latest
+   - ffmpeg: (system dependency)
    - python-dotenv: ^latest
    - requests: ^latest
 
@@ -240,6 +307,43 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Free tier may be limited for production use
    - Paid tier recommended for reliable service
 
+## Repository Structure
+
+1. **Single Repository Approach**
+   - All project files in one repository
+   - No submodules for simpler development workflow
+   - Feature branches for new functionality
+   - Pull requests for code review and merging
+
+2. **Directory Structure**
+   ```
+   psynotes/
+   ├── medical-note-transcriber/     # Main application
+   │   ├── public/                   # Static assets
+   │   ├── src/                      # Source code
+   │   │   ├── app/                  # Next.js App Router
+   │   │   │   ├── api/              # API routes
+   │   │   │   ├── record/           # Recording page
+   │   │   │   └── transcriptions/   # Transcriptions page
+   │   │   ├── lib/                  # Shared utilities
+   │   │   └── types/                # TypeScript types
+   │   ├── transcription-service/    # Python FastAPI service
+   │   │   ├── main.py               # Service entry point
+   │   │   └── requirements.txt      # Python dependencies
+   │   └── scripts/                  # Utility scripts
+   ├── mcp-servers/                  # MCP server implementations
+   │   ├── supabase-server/          # Supabase MCP server
+   │   └── vercel-server/            # Vercel MCP server
+   └── memory-bank/                  # Project documentation
+       ├── projectbrief.md           # Project overview
+       ├── productContext.md         # Product context
+       ├── systemPatterns.md         # System architecture
+       ├── techContext.md            # Technical context
+       ├── activeContext.md          # Current state
+       ├── progress.md               # Progress tracking
+       └── .clinerules               # Project intelligence
+   ```
+
 ## Documentation Resources
 
 1. **Next.js Documentation**
@@ -249,6 +353,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - [Supabase Docs](https://supabase.com/docs)
    - [Storage Quickstart](https://supabase.com/docs/guides/storage/quickstart)
    - [Edge Functions](https://supabase.com/docs/guides/functions)
+   - [Realtime](https://supabase.com/docs/guides/realtime)
 
 3. **OpenAI Documentation**
    - [Whisper API Docs](https://platform.openai.com/docs/api-reference/audio/createTranscription)
@@ -257,6 +362,9 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 4. **FastAPI Documentation**
    - [FastAPI Docs](https://fastapi.tiangolo.com/)
 
-5. **Deployment Documentation**
+5. **ffmpeg Documentation**
+   - [ffmpeg Docs](https://ffmpeg.org/documentation.html)
+
+6. **Deployment Documentation**
    - [Vercel Deployment](https://vercel.com/docs/deployment)
    - [Heroku Python Deployment](https://devcenter.heroku.com/categories/python-support)
