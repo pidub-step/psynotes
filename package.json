@@ -1,0 +1,24 @@
+{
+  "name": "psynotes",
+  "version": "1.0.0",
+  "description": "Medical Note Transcription App",
+  "scripts": {
+    "dev": "cd medical-note-transcriber && npm run dev",
+    "build": "cd medical-note-transcriber && npm run build",
+    "start": "cd medical-note-transcriber && npm run start",
+    "lint": "cd medical-note-transcriber && npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pidub-step/psynotes.git"
+  },
+  "keywords": [
+    "medical",
+    "transcription",
+    "notes",
+    "openai",
+    "gpt-4o-transcribe"
+  ],
+  "author": "",
+  "license": "MIT"
+}
