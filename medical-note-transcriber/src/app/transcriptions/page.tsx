@@ -1,97 +1,147 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Play, Pause } from 'lucide-react';
+import { useTranscriptions, getFileUrl, deleteTranscription as deleteTranscriptionApi } from '@/lib/hooks';
+import { TranscriptionSkeleton } from '@/components/TranscriptionSkeleton';
 
-interface Transcription {
-  id: number;
-  file_id: string;
-  transcription_text: string | null;
-  status: 'processing' | 'completed' | 'error';
-  created_at: string;
+interface AudioPlayerProps {
+  url: string;
+  onEnded: () => void;
 }
 
-export default function TranscriptionsPage() {
-  const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ url, onEnded }) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(true); // Start playing by default
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   
-  const fetchTranscriptions = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { data, error } = await supabase
-        .from('transcriptions')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      setTranscriptions(data as Transcription[]);
-    } catch (err: unknown) {
-      console.error('Error fetching transcriptions:', err);
-      setError(
-        err instanceof Error 
-          ? err.message 
-          : 'Failed to load transcriptions. Please try again later.'
-      );
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    
+    const handleDurationChange = () => {
+      setDuration(audio.duration);
+    };
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      onEnded();
+    };
+    
+    // Add event listeners
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('ended', handleEnded);
+    
+    // Start playing automatically
+    audio.play().catch(err => {
+      console.error('Error playing audio:', err);
+      setIsPlaying(false);
+    });
+    
+    // Clean up
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [url, onEnded]);
+  
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
     }
   };
+  
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
+  
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={togglePlayPause}
+          className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+        >
+          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+        </button>
+        <div className="text-xs text-gray-500">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </div>
+      </div>
+      
+      <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div 
+          className="bg-blue-600 h-1.5 rounded-full" 
+          style={{ width: `${progressPercentage}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
 
+export default function TranscriptionsPage() {
+  const { transcriptions, isLoading, mutate } = useTranscriptions(20);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [playingFileId, setPlayingFileId] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  // Set up Supabase realtime subscription
   useEffect(() => {
-    // Initial fetch
-    fetchTranscriptions();
-    
-    // Set up a subscription to listen for changes
     const subscription = supabase
       .channel('transcriptions-changes')
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'transcriptions' 
-      }, (payload) => {
-        console.log('Received Supabase Realtime INSERT event:', payload);
-        // Add new transcription to the beginning of the list
-        setTranscriptions(current => [payload.new as Transcription, ...current]);
+      }, () => {
+        // Revalidate data when a new transcription is added
+        mutate();
       })
       .on('postgres_changes', { 
         event: 'UPDATE', 
         schema: 'public', 
         table: 'transcriptions' 
-      }, (payload) => {
-        console.log('Received Supabase Realtime UPDATE event:', payload);
-        // Update the specific transcription in the list
-        setTranscriptions(current => 
-          current.map(item => 
-            item.id === payload.new.id ? (payload.new as Transcription) : item
-          )
-        );
+      }, () => {
+        // Revalidate data when a transcription is updated
+        mutate();
       })
       .on('postgres_changes', { 
         event: 'DELETE', 
         schema: 'public', 
         table: 'transcriptions' 
-      }, (payload) => {
-        console.log('Received Supabase Realtime DELETE event:', payload);
-        // Remove the deleted transcription from the list
-        setTranscriptions(current => 
-          current.filter(item => item.id !== payload.old.id)
-        );
+      }, () => {
+        // Revalidate data when a transcription is deleted
+        mutate();
       })
-      .subscribe((status) => {
-        console.log('Supabase Realtime subscription status:', status);
-      });
+      .subscribe();
     
+    // Clean up audio when component unmounts
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [mutate]);
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -111,30 +161,33 @@ export default function TranscriptionsPage() {
     }
   };
   
-  const getFileUrl = async (fileId: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('medical-notes')
-        .createSignedUrl(fileId, 60);
-      
-      if (error) throw error;
-      
-      return data.signedUrl;
-    } catch (err) {
-      console.error('Error getting file URL:', err);
-      return null;
-    }
-  };
-  
+  // Play audio function with better state management
   const playAudio = async (fileId: string) => {
+    // If the same file is already playing, don't do anything
+    if (playingFileId === fileId && audioUrl) {
+      return;
+    }
+    
+    // If a different file is playing, stop it first
+    if (playingFileId && playingFileId !== fileId) {
+      setPlayingFileId(null);
+      setAudioUrl(null);
+    }
+    
     const url = await getFileUrl(fileId);
     if (url) {
-      const audio = new Audio(url);
-      audio.play();
+      setPlayingFileId(fileId);
+      setAudioUrl(url);
     }
   };
   
-  const deleteTranscription = async (id: number, fileId: string) => {
+  const handleAudioEnded = () => {
+    setPlayingFileId(null);
+    setAudioUrl(null);
+  };
+  
+  // Handle transcription deletion
+  const handleDeleteTranscription = async (id: number, fileId: string) => {
     if (!confirm('Are you sure you want to delete this transcription? This action cannot be undone.')) {
       return;
     }
@@ -142,40 +195,33 @@ export default function TranscriptionsPage() {
     try {
       setDeletingId(id);
       
-      // Optimistically update UI by removing the item immediately
-      setTranscriptions(current => current.filter(item => item.id !== id));
+      // Optimistically update UI
+      mutate(
+        transcriptions.filter(item => item.id !== id),
+        false // Don't revalidate yet
+      );
       
-      const response = await fetch('/api/delete-transcription', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id, file_id: fileId }),
-      });
+      await deleteTranscriptionApi(id, fileId);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete transcription');
-      }
-      
-      console.log('Transcription deleted successfully');
+      // Revalidate after successful deletion
+      mutate();
       
     } catch (err) {
       console.error('Error deleting transcription:', err);
-      // If deletion fails, fetch all transcriptions again to restore the correct state
-      fetchTranscriptions();
       setError(
         err instanceof Error 
           ? err.message 
           : 'Failed to delete transcription. Please try again later.'
       );
+      // Revalidate to restore correct state
+      mutate();
     } finally {
       setDeletingId(null);
     }
   };
   
   return (
-    <div className="flex min-h-screen flex-col items-center p-6">
+    <div className="flex min-h-screen flex-col items-center p-6 pt-16 lg:pt-6">
       <div className="w-full max-w-4xl">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Transcriptions</h1>
@@ -193,10 +239,8 @@ export default function TranscriptionsPage() {
           </div>
         )}
         
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
+        {isLoading ? (
+          <TranscriptionSkeleton />
         ) : transcriptions.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-6 text-center">
             <p className="text-gray-500 mb-4">No transcriptions found</p>
@@ -239,39 +283,41 @@ export default function TranscriptionsPage() {
                   </div>
                 ) : null}
                 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => playAudio(transcription.file_id)}
-                    className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm"
-                  >
-                    Play Audio
-                  </button>
-                  <button
-                    onClick={() => deleteTranscription(transcription.id, transcription.file_id)}
-                    disabled={deletingId === transcription.id}
-                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${
-                      deletingId === transcription.id
-                        ? 'bg-red-100 text-red-400 cursor-not-allowed'
-                        : 'bg-red-100 text-red-600 hover:bg-red-200 transition-colors'
-                    }`}
-                  >
-                    <Trash2 size={14} />
-                    {deletingId === transcription.id ? 'Deleting...' : 'Delete'}
-                  </button>
+                <div className="space-y-3">
+                  {playingFileId === transcription.file_id && audioUrl ? (
+                    <AudioPlayer 
+                      url={audioUrl} 
+                      onEnded={handleAudioEnded} 
+                    />
+                  ) : (
+                    <button
+                      onClick={() => playAudio(transcription.file_id)}
+                      className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm flex items-center gap-1"
+                    >
+                      <Play size={14} />
+                      Play Audio
+                    </button>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDeleteTranscription(transcription.id, transcription.file_id)}
+                      disabled={deletingId === transcription.id}
+                      className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${
+                        deletingId === transcription.id
+                          ? 'bg-red-100 text-red-400 cursor-not-allowed'
+                          : 'bg-red-100 text-red-600 hover:bg-red-200 transition-colors'
+                      }`}
+                    >
+                      <Trash2 size={14} />
+                      {deletingId === transcription.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-        
-        <div className="text-center mt-8">
-          <Link 
-            href="/"
-            className="text-blue-600 hover:underline"
-          >
-            Back to Home
-          </Link>
-        </div>
       </div>
     </div>
   );
