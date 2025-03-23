@@ -32,6 +32,7 @@ app = FastAPI(
 class TranscriptionRequest(BaseModel):
     file_id: str
     file_url: Optional[str] = None
+    language: Optional[str] = "en"  # Default to English if not specified
 
 class TranscriptionResponse(BaseModel):
     message: str
@@ -82,14 +83,14 @@ def split_audio(audio_path, chunk_size_mb=24) -> List[str]:
         print(f"Error splitting audio: {str(e)}")
         return []
 
-async def transcribe_chunk(chunk_path) -> Optional[str]:
+async def transcribe_chunk(chunk_path, language="en") -> Optional[str]:
     """Transcribe a single audio chunk using OpenAI API."""
     try:
         with open(chunk_path, "rb") as audio_file:
             transcription = openai_client.audio.transcriptions.create(
-                model="gpt-4o-transcribe",  # Using the latest model for better accuracy
+                model="whisper-1",  # Using whisper-1 model as fallback
                 file=audio_file,
-                language="en",
+                language=language,
                 response_format="text",
                 temperature=0,  # Lower temperature for more deterministic results
             )
@@ -98,7 +99,7 @@ async def transcribe_chunk(chunk_path) -> Optional[str]:
         print(f"Error transcribing chunk {chunk_path}: {str(e)}")
         return None
 
-async def transcribe_audio_file(audio_path) -> Optional[str]:
+async def transcribe_audio_file(audio_path, language="en") -> Optional[str]:
     """
     Transcribe audio using OpenAI's API with chunking support.
     
@@ -120,7 +121,7 @@ async def transcribe_audio_file(audio_path) -> Optional[str]:
         transcripts = []
         for i, chunk_path in enumerate(chunks):
             print(f"[*] Transcribing chunk {i+1}/{len(chunks)}...")
-            text = await transcribe_chunk(chunk_path)
+            text = await transcribe_chunk(chunk_path, language)
             if text:
                 transcripts.append(text)
             
@@ -158,7 +159,8 @@ async def transcribe_audio(request: TranscriptionRequest, background_tasks: Back
     background_tasks.add_task(
         process_transcription, 
         file_id=request.file_id,
-        file_url=request.file_url
+        file_url=request.file_url,
+        language=request.language
     )
     
     return {
@@ -196,7 +198,7 @@ async def transcribe_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def process_transcription(file_id: str, file_url: str):
+async def process_transcription(file_id: str, file_url: str, language: str = "en"):
     """Process the transcription in the background"""
     try:
         print(f"Starting transcription for {file_id}")
@@ -211,7 +213,7 @@ async def process_transcription(file_id: str, file_url: str):
         
         try:
             # Transcribe the file
-            transcription_text = await transcribe_audio_file(temp_file_path)
+            transcription_text = await transcribe_audio_file(temp_file_path, language)
             
             if not transcription_text:
                 raise Exception("Failed to transcribe audio")

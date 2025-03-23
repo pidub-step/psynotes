@@ -18,6 +18,7 @@ export default function RecordPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<string>("fr"); // Default to French
   
   const recorderRef = useRef<Recorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -153,6 +154,7 @@ export default function RecordPage() {
           },
           body: JSON.stringify({
             file_id: fileName,
+            language: language,
           }),
         });
         
@@ -196,6 +198,22 @@ export default function RecordPage() {
             {error}
           </div>
         )}
+        
+        <div className="mb-6">
+          <label htmlFor="language-select" className="block text-sm font-medium text-gray-700 mb-2">
+            Language
+          </label>
+          <select
+            id="language-select"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isRecording || isUploading}
+          >
+            <option value="fr">Français (Canada)</option>
+            <option value="en">English</option>
+          </select>
+        </div>
         
         <div className="flex flex-col items-center justify-center mb-8">
           <div className="text-5xl font-mono mb-6">
