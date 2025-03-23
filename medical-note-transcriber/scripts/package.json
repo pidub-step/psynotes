@@ -1,0 +1,13 @@
+{
+  "name": "medical-note-transcriber-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for setting up the Medical Note Transcription App",
+  "type": "module",
+  "scripts": {
+    "setup-supabase": "node setup-supabase.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.7",
+    "dotenv": "^16.4.5"
+  }
+}
