@@ -11,11 +11,13 @@ graph TD
         RC[Recording Component]
         UC[Upload Component]
         TD[Transcription Display]
+        RS[Realtime Subscription]
     end
     
     subgraph "Storage (Supabase)"
         SB[Storage Bucket]
         PG[PostgreSQL Database]
+        RT[Realtime Service]
     end
     
     subgraph "Backend Services"
@@ -31,7 +33,9 @@ graph TD
     EF --> TS
     TS --> WA
     TS --> PG
-    PG --> TD
+    PG --> RT
+    RT --> RS
+    RS --> TD
 ```
 
 ## Component Relationships
@@ -58,6 +62,11 @@ graph TD
    - Displays transcription text with appropriate formatting
    - Shows transcription status (processing, completed)
 
+5. **Realtime Subscription (RS)**
+   - Subscribes to Supabase Realtime events
+   - Updates UI in real-time when transcription status changes
+   - Handles individual events for optimized performance
+
 ### Backend Components
 
 1. **Storage Bucket (SB)**
@@ -68,17 +77,22 @@ graph TD
    - Stores transcription metadata and text
    - Maintains relationship between audio files and transcriptions
 
-3. **Edge Function (EF)**
+3. **Realtime Service (RT)**
+   - Broadcasts database changes as events
+   - Enables real-time updates without polling
+   - Supports filtering by event type (INSERT, UPDATE, DELETE)
+
+4. **Edge Function (EF)**
    - Triggered by storage events
    - Calls transcription service with file URL
 
-4. **Transcription Service (TS)**
+5. **Transcription Service (TS)**
    - Python FastAPI microservice
    - Handles audio file processing
    - Manages communication with Whisper API
    - Stores transcription results in PostgreSQL
 
-5. **Whisper API (WA)**
+6. **Whisper API (WA)**
    - OpenAI's API for audio transcription
    - Processes audio chunks and returns text
 
@@ -95,6 +109,7 @@ sequenceDiagram
     participant TranscriptionService
     participant WhisperAPI
     participant Database
+    participant RealtimeService
     
     User->>Frontend: Start Recording
     Frontend->>Frontend: Record Audio (WAV)
@@ -108,8 +123,8 @@ sequenceDiagram
     WhisperAPI->>TranscriptionService: Return Transcription(s)
     TranscriptionService->>TranscriptionService: Combine if Split
     TranscriptionService->>Database: Store Transcription
-    Frontend->>Database: Poll for Completion
-    Database->>Frontend: Return Transcription
+    Database->>RealtimeService: Broadcast Change Event
+    RealtimeService->>Frontend: Push Update via Subscription
     Frontend->>User: Display Transcription
 ```
 
@@ -140,19 +155,31 @@ sequenceDiagram
    - Rationale: Allows for longer processing times and specialized scaling
    - Implementation: FastAPI on Heroku or similar platform
 
+6. **Real-time Updates**
+   - Decision: Use Supabase Realtime for status updates
+   - Rationale: Provides immediate updates without polling, reduces UI flashing
+   - Implementation: Supabase Realtime subscription with event-specific handlers
+
+7. **Repository Structure**
+   - Decision: Convert submodule to regular directory
+   - Rationale: Simplifies development workflow and repository management
+   - Implementation: Single repository with all project files
+
 ## Design Patterns
 
 1. **Event-Driven Architecture**
    - Storage events trigger transcription process
+   - Database changes broadcast events via Realtime service
    - Asynchronous processing decouples recording from transcription
 
 2. **Microservice Pattern**
    - Separate services for frontend and transcription
    - Clear API boundaries between components
 
-3. **Polling Pattern**
-   - Frontend polls database for transcription status
-   - Simple implementation for MVP (could be replaced with WebSockets/Realtime in future)
+3. **Observer Pattern**
+   - Frontend subscribes to database changes via Realtime
+   - UI updates automatically when data changes
+   - Replaces polling with push-based updates
 
 4. **Repository Pattern**
    - Abstraction layer for database operations
@@ -161,6 +188,12 @@ sequenceDiagram
 5. **State Management**
    - Frontend maintains application state (recording, uploading, transcribing)
    - Clear state transitions with appropriate UI feedback
+   - Optimistic UI updates for immediate feedback
+
+6. **Optimistic UI Pattern**
+   - Update UI immediately before server confirmation
+   - Fallback to server state if operation fails
+   - Provides responsive user experience
 
 ## Technical Constraints
 
@@ -178,4 +211,9 @@ sequenceDiagram
 
 4. **Processing Time**
    - Constraint: Transcription of long audio files takes time
-   - Mitigation: Clear status indicators, asynchronous processing
+   - Mitigation: Clear status indicators, asynchronous processing, real-time updates
+
+5. **UI Performance**
+   - Constraint: Frequent updates can cause UI flashing
+   - Mitigation: Use Realtime subscriptions with optimized event handling
+   - Mitigation: Disable React Strict Mode in development for smoother experience
