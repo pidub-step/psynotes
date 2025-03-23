@@ -25,13 +25,14 @@ openai_client = openai.OpenAI(api_key=openai_api_key)
 # Initialize FastAPI app
 app = FastAPI(
     title="Medical Note Transcription Service",
-    description="A service for transcribing medical audio notes using OpenAI's GPT-4o Transcribe API",
-    version="1.0.0",
+    description="A service for transcribing medical audio notes using OpenAI's latest GPT-4o Transcribe API with language selection",
+    version="1.0.1",
 )
 
 class TranscriptionRequest(BaseModel):
     file_id: str
     file_url: Optional[str] = None
+    language: Optional[str] = "en"  # Default to English if not specified
 
 class TranscriptionResponse(BaseModel):
     message: str
@@ -82,23 +83,33 @@ def split_audio(audio_path, chunk_size_mb=24) -> List[str]:
         print(f"Error splitting audio: {str(e)}")
         return []
 
-async def transcribe_chunk(chunk_path) -> Optional[str]:
+async def transcribe_chunk(chunk_path, language="en") -> Optional[str]:
     """Transcribe a single audio chunk using OpenAI API."""
     try:
         with open(chunk_path, "rb") as audio_file:
-            transcription = openai_client.audio.transcriptions.create(
+            transcription_response = openai_client.audio.transcriptions.create(
                 model="gpt-4o-transcribe",  # Using the latest model for better accuracy
                 file=audio_file,
-                language="en",
-                response_format="text",
+                language=language,
+                response_format="json",  # Required for gpt-4o-transcribe
+                include=["logprobs"],  # Get confidence scores
                 temperature=0,  # Lower temperature for more deterministic results
+                timestamp_granularities=["segment"]  # Get segment timestamps
             )
-            return transcription
+            
+            # Extract the text from the JSON response
+            if isinstance(transcription_response, dict) and "text" in transcription_response:
+                return transcription_response["text"]
+            elif hasattr(transcription_response, "text"):
+                return transcription_response.text
+            else:
+                print(f"Unexpected response format: {transcription_response}")
+                return str(transcription_response)
     except Exception as e:
         print(f"Error transcribing chunk {chunk_path}: {str(e)}")
         return None
 
-async def transcribe_audio_file(audio_path) -> Optional[str]:
+async def transcribe_audio_file(audio_path, language="en") -> Optional[str]:
     """
     Transcribe audio using OpenAI's API with chunking support.
     
@@ -120,7 +131,7 @@ async def transcribe_audio_file(audio_path) -> Optional[str]:
         transcripts = []
         for i, chunk_path in enumerate(chunks):
             print(f"[*] Transcribing chunk {i+1}/{len(chunks)}...")
-            text = await transcribe_chunk(chunk_path)
+            text = await transcribe_chunk(chunk_path, language)
             if text:
                 transcripts.append(text)
             
@@ -158,7 +169,8 @@ async def transcribe_audio(request: TranscriptionRequest, background_tasks: Back
     background_tasks.add_task(
         process_transcription, 
         file_id=request.file_id,
-        file_url=request.file_url
+        file_url=request.file_url,
+        language=request.language
     )
     
     return {
@@ -196,7 +208,7 @@ async def transcribe_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def process_transcription(file_id: str, file_url: str):
+async def process_transcription(file_id: str, file_url: str, language: str = "en"):
     """Process the transcription in the background"""
     try:
         print(f"Starting transcription for {file_id}")
@@ -211,7 +223,7 @@ async def process_transcription(file_id: str, file_url: str):
         
         try:
             # Transcribe the file
-            transcription_text = await transcribe_audio_file(temp_file_path)
+            transcription_text = await transcribe_audio_file(temp_file_path, language)
             
             if not transcription_text:
                 raise Exception("Failed to transcribe audio")

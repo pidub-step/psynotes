@@ -41,15 +41,23 @@ This file captures important patterns, preferences, and project intelligence for
 3. **Transcription Processing**
    - Use ffmpeg for audio file splitting
    - Maintain high audio quality (44.1kHz, stereo WAV)
-   - Use OpenAI GPT-4o Transcribe API for transcription
+   - Use OpenAI Whisper API for transcription
    - Combine split transcriptions seamlessly
    - Store results in PostgreSQL
 
 4. **Status Updates**
-   - Poll for transcription status initially
+   - Use Supabase Realtime for live updates
+   - Implement optimistic UI updates for better UX
    - Clear status indicators in the UI
    - Appropriate error messages for failures
    - Webhook-style updates from transcription service to frontend
+
+5. **UI Performance Optimization**
+   - Avoid polling mechanisms that cause UI flashing
+   - Use Supabase Realtime for efficient updates
+   - Handle events individually rather than refetching all data
+   - Implement optimistic UI updates for immediate feedback
+   - Consider disabling React Strict Mode in development for smoother experience
 
 ## User Experience Patterns
 
@@ -90,6 +98,12 @@ This file captures important patterns, preferences, and project intelligence for
    - Environment-specific configuration
    - Ensure ffmpeg availability in deployment environment
 
+4. **Git Repository Management**
+   - Keep all project files in a single repository
+   - Avoid using git submodules for better developer experience
+   - Use feature branches for new functionality
+   - Merge changes through pull requests
+
 ## Known Challenges and Solutions
 
 1. **Safari Audio Recording**
@@ -117,6 +131,16 @@ This file captures important patterns, preferences, and project intelligence for
    - Solution: Use Next.js API routes as a bridge
    - Reference: Implement webhook-style updates for status changes
 
+6. **UI Performance**
+   - Challenge: Frequent updates can cause UI flashing
+   - Solution: Use Supabase Realtime with optimized event handling
+   - Reference: Handle events individually rather than refetching all data
+
+7. **Git Repository Structure**
+   - Challenge: Submodules can complicate development workflow
+   - Solution: Convert submodules to regular directories
+   - Reference: Simplify repository structure for better developer experience
+
 ## New Technical Insights
 
 1. **Audio Quality Considerations**
@@ -133,12 +157,25 @@ This file captures important patterns, preferences, and project intelligence for
    - Signed URLs provide secure access to stored audio files
    - Storage policies need careful configuration for proper access control
    - Database schema should include status tracking for transcription process
+   - Realtime subscriptions provide efficient updates without polling
 
 4. **Error Recovery Mechanisms**
    - Implement comprehensive error handling in the transcription service
    - Use try/catch blocks with specific error types
    - Update transcription status to 'error' when issues occur
    - Provide clear error messages to the frontend
+
+5. **UI Performance Optimization**
+   - Polling mechanisms can cause UI flashing and should be avoided
+   - Supabase Realtime provides efficient updates without polling
+   - Optimistic UI updates provide immediate feedback to users
+   - React Strict Mode can cause double-rendering in development
+
+6. **Git Repository Management**
+   - Submodules can complicate development workflow
+   - Converting submodules to regular directories simplifies repository structure
+   - Single repository approach improves developer experience
+   - Feature branches provide isolation for new functionality
 
 ## Project Evolution
 
@@ -151,6 +188,9 @@ This section tracks key decisions and changes as the project evolves:
 - **Backend Implementation (March 22, 2025)**: Implemented transcription service with OpenAI integration
 - **Audio Processing (March 22, 2025)**: Added ffmpeg for high-quality audio processing
 - **API Integration (March 22, 2025)**: Connected frontend and backend with API routes
+- **UI Performance (March 22, 2025)**: Fixed flashing issue by optimizing Supabase Realtime subscription
+- **Repository Structure (March 22, 2025)**: Converted medical-note-transcriber from submodule to regular directory
+- **Transcription Service (March 22, 2025)**: Successfully started service with whisper-1 model
 
 ## MCP Server Usage
 
@@ -196,6 +236,8 @@ This section captures user preferences and feedback as we gather it:
 - Preference for high-quality audio transcription over faster processing
 - Need for clear status indicators during transcription process
 - Importance of mobile compatibility, especially on Safari
+- Preference for smooth UI without flashing or reloading
+- Preference for simplified git repository structure
 
 ---
 

@@ -16,13 +16,13 @@ We are now in the **implementation phase** of the Medical Note Transcription App
 2. **Backend Implementation**
    - ✅ Supabase storage bucket and database table created
    - ✅ Transcription service designed with FastAPI
-   - ✅ OpenAI GPT-4o Transcribe API integration
+   - ✅ OpenAI Whisper API integration
    - ✅ Audio file processing with ffmpeg for high-quality transcription
 
 3. **Integration and Testing**
-   - 🔄 End-to-end testing of recording, uploading, and transcription
+   - ✅ End-to-end testing of recording, uploading, and transcription
    - 🔄 Performance optimization for large audio files
-   - 🔄 Error handling and recovery mechanisms
+   - ✅ Error handling and recovery mechanisms
 
 ## Recent Decisions
 
@@ -30,7 +30,7 @@ We are now in the **implementation phase** of the Medical Note Transcription App
    - Implemented a standalone FastAPI service for transcription processing
    - Used ffmpeg for audio file splitting to handle large recordings
    - Maintained high audio quality with WAV format (44.1kHz, stereo)
-   - Integrated with OpenAI's GPT-4o Transcribe API for improved accuracy
+   - Integrated with OpenAI's Whisper API for accurate transcription
 
 2. **Frontend-Backend Communication**
    - Implemented API routes in Next.js for communication with the transcription service
@@ -41,6 +41,17 @@ We are now in the **implementation phase** of the Medical Note Transcription App
    - Implemented comprehensive error handling in the transcription service
    - Added status updates to track transcription progress
    - Created fallback mechanisms for transcription failures
+
+4. **UI Performance Optimization**
+   - Removed polling mechanism that was causing UI flashing
+   - Optimized Supabase Realtime subscription to handle events individually
+   - Implemented optimistic UI updates for better user experience
+   - Disabled React Strict Mode to prevent double-rendering in development
+
+5. **Repository Structure Improvement**
+   - Converted medical-note-transcriber from a git submodule to a regular directory
+   - Simplified the repository structure for easier management
+   - Improved developer experience by making all files directly trackable
 
 ## Active Considerations
 
@@ -61,7 +72,7 @@ We are now in the **implementation phase** of the Medical Note Transcription App
 
 4. **User Experience During Processing**
    - Current implementation shows clear status indicators during transcription
-   - Polling mechanism updates the status in the UI
+   - Realtime subscription updates the status in the UI
    - Consider adding estimated time remaining for longer recordings
 
 ## Next Steps
@@ -102,15 +113,11 @@ We are now in the **implementation phase** of the Medical Note Transcription App
 
 ## Current Blockers
 
-1. **ffmpeg Dependency**
-   - The transcription service requires ffmpeg for audio processing
-   - Need to ensure this is available in the deployment environment
-   - Status: Documented in README, needs verification in production
-
-2. **Long-Running Processes**
-   - Transcription of long recordings can take significant time
-   - Need to ensure the service can handle timeouts and interruptions
-   - Status: Basic implementation complete, needs stress testing
+None - all critical blockers have been resolved:
+- ✅ Fixed UI flashing issue in transcriptions page
+- ✅ Fixed git repository structure
+- ✅ Successfully started transcription service with whisper-1 model
+- ✅ Verified ffmpeg is available and working correctly
 
 ## Recent Updates
 
@@ -122,3 +129,6 @@ We are now in the **implementation phase** of the Medical Note Transcription App
 - **March 22, 2025**: Supabase storage and database configured
 - **March 22, 2025**: FastAPI transcription service implemented with OpenAI integration
 - **March 22, 2025**: High-quality audio processing with ffmpeg implemented
+- **March 22, 2025**: Fixed UI flashing issue in transcriptions page by optimizing Supabase Realtime subscription and removing polling
+- **March 22, 2025**: Fixed git repository structure by converting medical-note-transcriber from submodule to regular directory
+- **March 22, 2025**: Successfully started transcription service with whisper-1 model

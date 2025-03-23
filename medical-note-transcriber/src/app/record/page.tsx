@@ -194,60 +194,61 @@ export default function RecordPage() {
           </div>
         )}
         
-        <div className="mb-6 bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
-          <label htmlFor="language-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Language
-          </label>
-          <select
-            id="language-select"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isRecording || isUploading}
-          >
-            <option value="fr">Français (Canada)</option>
-            <option value="en">English</option>
-          </select>
-        </div>
+
+      <div className=\"mb-6 bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg\">
+  <label htmlFor=\"language-select\" className=\"block text-sm font-medium text-gray-700 mb-2\">
+    Language
+  </label>
+  <select
+    id=\"language-select\"
+    value={language}
+    onChange={(e) => setLanguage(e.target.value)}
+    className=\"w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+    disabled={isRecording || isUploading}
+  >
+    <option value=\"fr\">Français (Canada)</option>
+    <option value=\"en\">English</option>
+  </select>
+</div>
         
-        {!audioBlob ? (
-          <RecordingCard
-            isRecording={isRecording}
-            recordingTime={recordingTime}
-            onStartRecording={startRecording}
-            onStopRecording={stopRecording}
-            disabled={isUploading}
-          />
-        ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
-            <div className="mb-4">
-              <audio 
-                src={URL.createObjectURL(audioBlob)} 
-                controls 
-                className="w-full"
-              />
-            </div>
-            
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => {
-                  setAudioBlob(null);
-                  setRecordingTime(0);
-                }}
-                className="px-6 py-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-              >
-                Discard
-              </button>
-              
-              <button
-                onClick={uploadRecording}
-                className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-              >
-                Upload
-              </button>
-            </div>
-          </div>
-        )}
+{!audioBlob ? (
+  <RecordingCard
+    isRecording={isRecording}
+    recordingTime={recordingTime}
+    onStartRecording={startRecording}
+    onStopRecording={stopRecording}
+    disabled={isUploading}
+  />
+) : (
+  <div className=\"bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg\">
+    <div className=\"mb-4\">
+      <audio 
+        src={URL.createObjectURL(audioBlob)} 
+        controls 
+        className=\"w-full\"
+      />
+    </div>
+    
+    <div className=\"flex gap-4 justify-center\">
+      <button
+        onClick={() => {
+          setAudioBlob(null);
+          setRecordingTime(0);
+        }}
+        className=\"px-6 py-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors\"
+      >
+        Discard
+      </button>
+      
+      <button
+        onClick={uploadRecording}
+        className=\"px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors\"
+      >
+        Upload
+      </button>
+    </div>
+  </div>
+)}
         
         {isUploading && (
           <div className="mt-6 bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
