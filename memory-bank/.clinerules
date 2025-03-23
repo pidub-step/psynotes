@@ -156,8 +156,8 @@ This file captures important patterns preferences and project intelligence for t
 
 9. **Command Execution Path**
    - Challenge: npm commands must be run from the correct directory
-   - Solution: Always cd into the medical-note-transcriber directory first
-   - Reference: Ensure package.json is available in the current directory
+   - Solution: Added root package.json that forwards commands to medical-note-transcriber directory
+   - Reference: Root package.json contains scripts that cd into medical-note-transcriber before running commands
 
 ## New Technical Insights
 
@@ -274,9 +274,9 @@ This section captures user preferences and feedback as we gather it:
 
 1. **npm run dev Error**
    - Issue: "npm error code ENOENT" when running npm run dev
-   - Cause: Command executed from the wrong directory
-   - Solution: Always cd into the medical-note-transcriber directory first
-   - Example: `cd medical-note-transcriber && npm run dev`
+   - Cause: Command executed from the wrong directory (missing package.json)
+   - Solution: Added root package.json that forwards commands to medical-note-transcriber directory
+   - Example: Root package.json contains `"dev": "cd medical-note-transcriber && npm run dev"`
 
 2. **Syntax Errors in TypeScript Files**
    - Issue: Missing commas between imports or function parameters
