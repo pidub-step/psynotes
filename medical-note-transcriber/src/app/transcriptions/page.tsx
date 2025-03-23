@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Play, Pause } from 'lucide-react';
 
 interface Transcription {
   id: number;
@@ -13,11 +13,106 @@ interface Transcription {
   created_at: string;
 }
 
+interface AudioPlayerProps {
+  url: string;
+  onEnded: () => void;
+}
+
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ url, onEnded }) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(true); // Start playing by default
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  
+  useEffect(() => {
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    
+    const handleDurationChange = () => {
+      setDuration(audio.duration);
+    };
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      onEnded();
+    };
+    
+    // Add event listeners
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('ended', handleEnded);
+    
+    // Start playing automatically
+    audio.play().catch(err => {
+      console.error('Error playing audio:', err);
+      setIsPlaying(false);
+    });
+    
+    // Clean up
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [url, onEnded]);
+  
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+  
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
+  
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={togglePlayPause}
+          className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+        >
+          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+        </button>
+        <div className="text-xs text-gray-500">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </div>
+      </div>
+      
+      <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div 
+          className="bg-blue-600 h-1.5 rounded-full" 
+          style={{ width: `${progressPercentage}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
+
 export default function TranscriptionsPage() {
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [playingFileId, setPlayingFileId] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   
   const fetchTranscriptions = async () => {
     try {
@@ -127,11 +222,27 @@ export default function TranscriptionsPage() {
   };
   
   const playAudio = async (fileId: string) => {
+    // If the same file is already playing, don't do anything
+    if (playingFileId === fileId && audioUrl) {
+      return;
+    }
+    
+    // If a different file is playing, stop it first
+    if (playingFileId && playingFileId !== fileId) {
+      setPlayingFileId(null);
+      setAudioUrl(null);
+    }
+    
     const url = await getFileUrl(fileId);
     if (url) {
-      const audio = new Audio(url);
-      audio.play();
+      setPlayingFileId(fileId);
+      setAudioUrl(url);
     }
+  };
+  
+  const handleAudioEnded = () => {
+    setPlayingFileId(null);
+    setAudioUrl(null);
   };
   
   const deleteTranscription = async (id: number, fileId: string) => {
@@ -239,25 +350,36 @@ export default function TranscriptionsPage() {
                   </div>
                 ) : null}
                 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => playAudio(transcription.file_id)}
-                    className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm"
-                  >
-                    Play Audio
-                  </button>
-                  <button
-                    onClick={() => deleteTranscription(transcription.id, transcription.file_id)}
-                    disabled={deletingId === transcription.id}
-                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${
-                      deletingId === transcription.id
-                        ? 'bg-red-100 text-red-400 cursor-not-allowed'
-                        : 'bg-red-100 text-red-600 hover:bg-red-200 transition-colors'
-                    }`}
-                  >
-                    <Trash2 size={14} />
-                    {deletingId === transcription.id ? 'Deleting...' : 'Delete'}
-                  </button>
+                <div className="space-y-3">
+                  {playingFileId === transcription.file_id && audioUrl ? (
+                    <AudioPlayer 
+                      url={audioUrl} 
+                      onEnded={handleAudioEnded} 
+                    />
+                  ) : (
+                    <button
+                      onClick={() => playAudio(transcription.file_id)}
+                      className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm flex items-center gap-1"
+                    >
+                      <Play size={14} />
+                      Play Audio
+                    </button>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => deleteTranscription(transcription.id, transcription.file_id)}
+                      disabled={deletingId === transcription.id}
+                      className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${
+                        deletingId === transcription.id
+                          ? 'bg-red-100 text-red-400 cursor-not-allowed'
+                          : 'bg-red-100 text-red-600 hover:bg-red-200 transition-colors'
+                      }`}
+                    >
+                      <Trash2 size={14} />
+                      {deletingId === transcription.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
