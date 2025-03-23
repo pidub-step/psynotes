@@ -1,8 +1,8 @@
-# .clinerules - Project Intelligence for Medical Note Transcription App
+ clinerules - Project Intelligence for Medical Note Transcription App
 
 ## Project Patterns and Preferences
 
-This file captures important patterns, preferences, and project intelligence for the Medical Note Transcription App. It will be updated as we discover new insights during development.
+This file captures important patterns preferences and project intelligence for the Medical Note Transcription App. It will be updated as we discover new insights during development.
 
 ## Code Style and Organization
 
@@ -24,6 +24,12 @@ This file captures important patterns, preferences, and project intelligence for
    - snake_case for Python variables and functions
    - UPPER_CASE for constants and environment variables
 
+4. **Syntax Patterns**
+   - Proper comma separation between imports and function parameters
+   - Consistent use of semicolons
+   - Proper object and array syntax
+   - Consistent indentation and formatting
+
 ## Implementation Patterns
 
 1. **Audio Recording**
@@ -40,8 +46,8 @@ This file captures important patterns, preferences, and project intelligence for
 
 3. **Transcription Processing**
    - Use ffmpeg for audio file splitting
-   - Maintain high audio quality (44.1kHz, stereo WAV)
-   - Use OpenAI Whisper API for transcription
+   - Maintain high audio quality (44.1kHz stereo WAV)
+   - Use OpenAI gpt-4o-transcribe or gpt-4o-mini-transcribe models for transcription
    - Combine split transcriptions seamlessly
    - Store results in PostgreSQL
 
@@ -70,7 +76,7 @@ This file captures important patterns, preferences, and project intelligence for
 2. **Loading States**
    - Clear visual indicators for all async operations
    - Disable controls during processing
-   - Status badges for transcription state (processing, completed, error)
+   - Status badges for transcription state (processing completed error)
 
 3. **Error Handling**
    - User-friendly error messages
@@ -85,6 +91,7 @@ This file captures important patterns, preferences, and project intelligence for
    - Local FastAPI server for transcription service
    - Supabase project for storage and database
    - Environment variables for configuration
+   - Run npm commands from the correct directory (medical-note-transcriber)
 
 2. **Testing Strategy**
    - Component tests for UI elements
@@ -103,6 +110,7 @@ This file captures important patterns, preferences, and project intelligence for
    - Avoid using git submodules for better developer experience
    - Use feature branches for new functionality
    - Merge changes through pull requests
+   - Force push when necessary to ensure synchronization
 
 ## Known Challenges and Solutions
 
@@ -114,10 +122,10 @@ This file captures important patterns, preferences, and project intelligence for
 2. **Large File Handling**
    - Challenge: Long recordings create large WAV files
    - Solution: Use ffmpeg to split files into manageable chunks
-   - Reference: Maintain high quality (44.1kHz, stereo) for better transcription
+   - Reference: Maintain high quality (44.1kHz stereo) for better transcription
 
 3. **Processing Time Expectations**
-   - Challenge: Transcription takes time, especially for long recordings
+   - Challenge: Transcription takes time especially for long recordings
    - Solution: Clear status updates and progress indicators
    - Reference: Set appropriate user expectations
 
@@ -141,10 +149,20 @@ This file captures important patterns, preferences, and project intelligence for
    - Solution: Convert submodules to regular directories
    - Reference: Simplify repository structure for better developer experience
 
+8. **Syntax Errors**
+   - Challenge: Missing commas and syntax errors can cause runtime issues
+   - Solution: Careful code review and consistent formatting
+   - Reference: Pay special attention to imports and function parameters
+
+9. **Command Execution Path**
+   - Challenge: npm commands must be run from the correct directory
+   - Solution: Always cd into the medical-note-transcriber directory first
+   - Reference: Ensure package.json is available in the current directory
+
 ## New Technical Insights
 
 1. **Audio Quality Considerations**
-   - High-quality audio (44.1kHz, stereo WAV) produces better transcription results
+   - High-quality audio (44.1kHz stereo WAV) produces better transcription results
    - This increases file size but improves accuracy for medical terminology
    - ffmpeg provides flexible options for audio processing while maintaining quality
 
@@ -176,21 +194,32 @@ This file captures important patterns, preferences, and project intelligence for
    - Converting submodules to regular directories simplifies repository structure
    - Single repository approach improves developer experience
    - Feature branches provide isolation for new functionality
+   - Force push can be necessary to ensure synchronization between local and remote
+
+7. **Code Quality and Maintenance**
+   - Proper syntax and formatting are critical for application stability
+   - Missing commas in imports and function parameters can cause runtime errors
+   - Duplicate component definitions can lead to conflicts
+   - Consistent error handling improves application reliability
+   - Regular testing ensures all components work together correctly
 
 ## Project Evolution
 
 This section tracks key decisions and changes as the project evolves:
 
 - **Initial Setup (March 22, 2025)**: Project initialized with memory bank
-- **Technology Selection (March 22, 2025)**: Next.js, Supabase, FastAPI, OpenAI Whisper API
+- **Technology Selection (March 22, 2025)**: Next.js, Supabase, FastAPI, OpenAI gpt-4o-transcribe models
 - **MCP Servers (March 22, 2025)**: Created MCP servers for Supabase and Vercel integration
 - **Frontend Implementation (March 22, 2025)**: Implemented recording, upload, and transcription display
-- **Backend Implementation (March 22, 2025)**: Implemented transcription service with OpenAI integration
+- **Backend Implementation (March 22, 2025)**: Implemented transcription service with OpenAI gpt-4o-transcribe integration
 - **Audio Processing (March 22, 2025)**: Added ffmpeg for high-quality audio processing
 - **API Integration (March 22, 2025)**: Connected frontend and backend with API routes
 - **UI Performance (March 22, 2025)**: Fixed flashing issue by optimizing Supabase Realtime subscription
 - **Repository Structure (March 22, 2025)**: Converted medical-note-transcriber from submodule to regular directory
-- **Transcription Service (March 22, 2025)**: Successfully started service with whisper-1 model
+- **Transcription Service (March 22, 2025)**: Successfully started service with gpt-4o-transcribe model
+- **Bug Fixes (March 23, 2025)**: Fixed syntax errors in record and transcriptions pages
+- **Workflow Improvement (March 23, 2025)**: Fixed npm run dev execution path issue
+- **Repository Synchronization (March 23, 2025)**: Force pushed local code to GitHub
 
 ## MCP Server Usage
 
@@ -238,6 +267,34 @@ This section captures user preferences and feedback as we gather it:
 - Importance of mobile compatibility, especially on Safari
 - Preference for smooth UI without flashing or reloading
 - Preference for simplified git repository structure
+- Importance of proper syntax and code formatting
+- Preference for running the application from the correct directory
+
+## Common Issues and Solutions
+
+1. **npm run dev Error**
+   - Issue: "npm error code ENOENT" when running npm run dev
+   - Cause: Command executed from the wrong directory
+   - Solution: Always cd into the medical-note-transcriber directory first
+   - Example: `cd medical-note-transcriber && npm run dev`
+
+2. **Syntax Errors in TypeScript Files**
+   - Issue: Missing commas between imports or function parameters
+   - Cause: Incorrect syntax in TypeScript files
+   - Solution: Ensure proper comma separation and consistent formatting
+   - Example: `import { useState, useEffect, useRef } from 'react';`
+
+3. **Duplicate Component Definitions**
+   - Issue: "the name is defined multiple times" error
+   - Cause: Multiple definitions of the same component in a file
+   - Solution: Remove duplicate definitions and ensure single export
+   - Example: Remove duplicate `export default function TranscriptionsPage()`
+
+4. **GitHub Repository Synchronization**
+   - Issue: Local and remote repositories out of sync
+   - Cause: Different code versions or history
+   - Solution: Force push local code to GitHub when necessary
+   - Example: `git add . && git commit -m "Fix syntax errors" && git push -f origin main`
 
 ---
 

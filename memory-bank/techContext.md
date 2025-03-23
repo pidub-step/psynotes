@@ -1,4 +1,4 @@
-# Technical Context: Medical Note Transcription App
+Technical Context: Medical Note Transcription App
 
 ## Technology Stack
 
@@ -49,12 +49,14 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - OpenAPI documentation
    - Version: Latest
 
-3. **OpenAI Whisper API**
+3. **OpenAI GPT-4o Transcribe API**
    - State-of-the-art speech recognition
+   - Two model options:
+     - gpt-4o-transcribe: Higher accuracy, more features
+     - gpt-4o-mini-transcribe: Faster, more cost-effective
    - Multilingual support
    - Robust to background noise
-   - Cost-effective at $0.006/minute
-   - Version: whisper-1
+   - Version: Latest
 
 4. **ffmpeg**
    - Audio processing library
@@ -102,7 +104,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Setup: [Supabase Dashboard](https://supabase.com/dashboard)
 
 5. **OpenAI Account**
-   - Required for Whisper API access
+   - Required for GPT-4o Transcribe API access
    - Setup: [OpenAI Platform](https://platform.openai.com/)
 
 ### Local Development Setup
@@ -112,12 +114,12 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    # Create Next.js project
    npx create-next-app@latest medical-note-transcriber --use-npm
    cd medical-note-transcriber
-   
+
    # Install dependencies
    npm install shadcn/ui
    npm install recorder-js
    npm install @supabase/supabase-js
-   
+
    # Start development server
    npm run dev
    ```
@@ -126,10 +128,10 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    ```javascript
    // lib/supabase.ts
    import { createClient } from '@supabase/supabase-js'
-   
+
    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-   
+
    export const supabase = createClient(supabaseUrl, supabaseKey)
    ```
 
@@ -138,33 +140,33 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    // Example Realtime subscription
    const subscription = supabase
      .channel('transcriptions-changes')
-     .on('postgres_changes', { 
-       event: 'INSERT', 
-       schema: 'public', 
-       table: 'transcriptions' 
+     .on('postgres_changes', {
+       event: 'INSERT',
+       schema: 'public',
+       table: 'transcriptions'
      }, (payload) => {
        // Handle INSERT event
        setTranscriptions(current => [payload.new as Transcription, ...current]);
      })
-     .on('postgres_changes', { 
-       event: 'UPDATE', 
-       schema: 'public', 
-       table: 'transcriptions' 
+     .on('postgres_changes', {
+       event: 'UPDATE',
+       schema: 'public',
+       table: 'transcriptions'
      }, (payload) => {
        // Handle UPDATE event
-       setTranscriptions(current => 
-         current.map(item => 
+       setTranscriptions(current =>
+         current.map(item =>
            item.id === payload.new.id ? (payload.new as Transcription) : item
          )
        );
      })
-     .on('postgres_changes', { 
-       event: 'DELETE', 
-       schema: 'public', 
-       table: 'transcriptions' 
+     .on('postgres_changes', {
+       event: 'DELETE',
+       schema: 'public',
+       table: 'transcriptions'
      }, (payload) => {
        // Handle DELETE event
-       setTranscriptions(current => 
+       setTranscriptions(current =>
          current.filter(item => item.id !== payload.old.id)
        );
      })
@@ -176,14 +178,14 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    # Create directory for service
    mkdir transcription-service
    cd transcription-service
-   
+
    # Create virtual environment
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   
+
    # Install dependencies
    pip install fastapi uvicorn openai requests python-dotenv
-   
+
    # Start development server
    uvicorn main:app --reload
    ```
@@ -210,7 +212,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
    const nextConfig: NextConfig = {
      /* config options here */
-     reactStrictMode: false, // Disable Strict Mode to prevent double-rendering in development
+     reactStrictMode: false // Disable Strict Mode to prevent double-rendering in development
    };
 
    export default nextConfig;
@@ -231,8 +233,8 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
 ### API Limitations
 
-1. **Whisper API Constraints**
-   - 25MB file size limit per request
+1. **GPT-4o Transcribe API Constraints**
+   - File size limits
    - Rate limits based on OpenAI account tier
    - Cost considerations for long recordings
 
@@ -295,7 +297,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Account required
    - API key needed
    - Credit card required for API usage
-   - Cost: $0.006 per minute of audio
+   - Models: gpt-4o-transcribe, gpt-4o-mini-transcribe
 
 3. **Vercel**
    - Account required
@@ -356,8 +358,8 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - [Realtime](https://supabase.com/docs/guides/realtime)
 
 3. **OpenAI Documentation**
-   - [Whisper API Docs](https://platform.openai.com/docs/api-reference/audio/createTranscription)
-   - [Whisper API FAQ](https://help.openai.com/en/articles/7031512-whisper-api-faq)
+   - [GPT-4o Transcribe API Docs](https://platform.openai.com/docs/api-reference/audio)
+   - [GPT-4o Models](https://platform.openai.com/docs/models)
 
 4. **FastAPI Documentation**
    - [FastAPI Docs](https://fastapi.tiangolo.com/)

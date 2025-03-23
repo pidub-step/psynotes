@@ -25,7 +25,7 @@ The Medical Note Transcription App addresses these challenges by providing:
 
 3. **Backend Processing**: Moving transcription to the backend removes the computational burden from the user's device and allows for processing of longer recordings.
 
-4. **Quick Turnaround**: Automated transcription using OpenAI's Whisper API provides results faster than traditional transcription services.
+4. **Quick Turnaround**: Automated transcription using OpenAI's GPT-4o Transcribe models provides results faster than traditional transcription services.
 
 5. **Simplicity First**: A minimalist interface focused on the core task without unnecessary complexity.
 

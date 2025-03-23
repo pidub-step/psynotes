@@ -23,7 +23,7 @@ graph TD
     subgraph "Backend Services"
         EF[Edge Function]
         TS[Transcription Service]
-        WA[Whisper API]
+        WA[GPT-4o Transcribe API]
     end
     
     UI --> RC
@@ -89,12 +89,13 @@ graph TD
 5. **Transcription Service (TS)**
    - Python FastAPI microservice
    - Handles audio file processing
-   - Manages communication with Whisper API
+   - Manages communication with GPT-4o Transcribe API
    - Stores transcription results in PostgreSQL
 
-6. **Whisper API (WA)**
-   - OpenAI's API for audio transcription
+6. **GPT-4o Transcribe API (WA)**
+   - OpenAI's API for audio transcription (gpt-4o-transcribe or gpt-4o-mini-transcribe)
    - Processes audio chunks and returns text
+   - State-of-the-art speech recognition with high accuracy
 
 ## Data Flow Patterns
 
@@ -107,7 +108,7 @@ sequenceDiagram
     participant Storage
     participant EdgeFunction
     participant TranscriptionService
-    participant WhisperAPI
+    participant GPT4oAPI
     participant Database
     participant RealtimeService
     
@@ -119,8 +120,8 @@ sequenceDiagram
     EdgeFunction->>TranscriptionService: Send File URL
     TranscriptionService->>Storage: Download Audio
     TranscriptionService->>TranscriptionService: Split if >25MB
-    TranscriptionService->>WhisperAPI: Send Audio Chunk(s)
-    WhisperAPI->>TranscriptionService: Return Transcription(s)
+    TranscriptionService->>GPT4oAPI: Send Audio Chunk(s)
+    GPT4oAPI->>TranscriptionService: Return Transcription(s) from GPT-4o models
     TranscriptionService->>TranscriptionService: Combine if Split
     TranscriptionService->>Database: Store Transcription
     Database->>RealtimeService: Broadcast Change Event
@@ -138,11 +139,11 @@ sequenceDiagram
 2. **Backend Transcription Processing**
    - Decision: Process transcriptions entirely on the backend
    - Rationale: Removes computational burden from client devices, handles longer recordings
-   - Implementation: FastAPI microservice with OpenAI Whisper API integration
+   - Implementation: FastAPI microservice with OpenAI GPT-4o Transcribe API integration
 
 3. **Audio File Splitting**
    - Decision: Split audio files exceeding 25MB into chunks
-   - Rationale: Whisper API has a 25MB file size limit
+   - Rationale: API has file size limits
    - Implementation: Python pydub library for audio processing
 
 4. **Serverless Architecture**
@@ -202,7 +203,7 @@ sequenceDiagram
    - Mitigation: Use Recorder.js for highest quality available (16-bit PCM/WAV)
 
 2. **File Size Limits**
-   - Constraint: Whisper API has a 25MB file size limit
+   - Constraint: APIs have file size limits
    - Mitigation: Split audio files into chunks and combine transcriptions
 
 3. **Mobile Browser Compatibility**

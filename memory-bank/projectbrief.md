@@ -13,7 +13,7 @@ The Medical Note Transcription App is a full-stack web application designed to h
 
 2. **Backend Transcription Processing**
    - Process audio transcriptions entirely on the backend
-   - Use OpenAI's Whisper API for accurate medical transcription
+   - Use OpenAI's GPT-4o Transcribe models for accurate medical transcription
    - Handle long recordings (up to 90 minutes) by splitting into manageable chunks
 
 3. **Efficient Storage**
@@ -34,7 +34,7 @@ The primary users are doctors who need a straightforward tool to transcribe medi
 
 ### Included
 - Audio recording in high-quality format
-- Backend transcription using OpenAI Whisper API
+- Backend transcription using OpenAI GPT-4o Transcribe models
 - Audio storage in Supabase
 - Transcription display
 - Basic user interface with recording controls
@@ -45,7 +45,7 @@ The primary users are doctors who need a straightforward tool to transcribe medi
 - Patient data management
 - Integration with electronic health record (EHR) systems
 - Advanced editing of transcriptions
-- Multi-language support (beyond what Whisper API provides)
+- Multi-language support (beyond what GPT-4o Transcribe models provide)
 
 ## Success Criteria
 
