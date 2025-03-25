@@ -3,46 +3,35 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse the request body
     const body = await request.json();
+    const { id, structured_note } = body;
     
-    // Validate the request
-    if (!body.file_id) {
+    if (!id) {
       return NextResponse.json(
-        { error: 'file_id is required' },
+        { error: 'Transcription ID is required' },
         { status: 400 }
       );
     }
     
-    // Prepare update data
-    const updateData: { status: string; transcription_text?: string } = {
-      status: body.status || 'error'
-    };
-    
-    // Add transcription text if provided
-    if (body.transcription_text) {
-      updateData.transcription_text = body.transcription_text;
-    }
-    
-    // Update the transcription in Supabase
+    // Update the transcription in the database
     const { error } = await supabase
       .from('transcriptions')
-      .update(updateData)
-      .eq('file_id', body.file_id);
+      .update({ structured_note })
+      .eq('id', id);
     
     if (error) {
-      throw new Error(error.message);
+      console.error('Error updating transcription:', error);
+      return NextResponse.json(
+        { error: 'Failed to update transcription' },
+        { status: 500 }
+      );
     }
     
-    return NextResponse.json({
-      message: 'Transcription updated successfully',
-      file_id: body.file_id,
-      status: updateData.status
-    });
-  } catch (error) {
-    console.error('Update transcription error:', error);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Error in update-transcription API:', err);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
