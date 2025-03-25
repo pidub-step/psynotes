@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Trash2, Play, Pause } from 'lucide-react';
+import { Trash2, Play, Pause, FileText } from 'lucide-react';
 import { useTranscriptions, getFileUrl, deleteTranscription as deleteTranscriptionApi } from '@/lib/hooks';
 import { TranscriptionSkeleton } from '@/components/TranscriptionSkeleton';
+import { StructuredNoteModal } from '@/components/StructuredNoteModal';
 
 interface AudioPlayerProps {
   url: string;
@@ -106,6 +107,8 @@ export default function TranscriptionsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [playingFileId, setPlayingFileId] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isStructuredNoteModalOpen, setIsStructuredNoteModalOpen] = useState(false);
+  const [selectedTranscription, setSelectedTranscription] = useState<number | null>(null);
 
   // Set up Supabase realtime subscription
   useEffect(() => {
@@ -300,6 +303,19 @@ export default function TranscriptionsPage() {
                   )}
                   
                   <div className="flex gap-2">
+                    {transcription.status === 'completed' && transcription.transcription_text && (
+                      <button
+                        onClick={() => {
+                          setSelectedTranscription(transcription.id);
+                          setIsStructuredNoteModalOpen(true);
+                        }}
+                        className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors text-sm flex items-center gap-1"
+                      >
+                        <FileText size={14} />
+                        View Structured Note
+                      </button>
+                    )}
+                    
                     <button
                       onClick={() => handleDeleteTranscription(transcription.id, transcription.file_id)}
                       disabled={deletingId === transcription.id}
@@ -319,6 +335,28 @@ export default function TranscriptionsPage() {
           </div>
         )}
       </div>
+      
+      {/* Structured Note Modal */}
+      {selectedTranscription && (
+        <StructuredNoteModal
+          isOpen={isStructuredNoteModalOpen}
+          onClose={() => {
+            setIsStructuredNoteModalOpen(false);
+            setSelectedTranscription(null);
+          }}
+          transcriptionId={selectedTranscription}
+          transcriptionText={
+            transcriptions.find(t => t.id === selectedTranscription)?.transcription_text || null
+          }
+          structuredNote={
+            transcriptions.find(t => t.id === selectedTranscription)?.structured_note || null
+          }
+          onUpdate={() => {
+            // Revalidate data when the structured note is updated
+            mutate();
+          }}
+        />
+      )}
     </div>
   );
 }

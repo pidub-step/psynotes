@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 from typing import Optional, List
 from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import openai
@@ -36,6 +37,15 @@ app = FastAPI(
     title="Structured Note Generation Service",
     description="A service for generating structured medical notes using OpenAI's GPT models",
     version="1.0.0",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 class StructureNoteRequest(BaseModel):

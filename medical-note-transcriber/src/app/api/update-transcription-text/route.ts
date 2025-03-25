@@ -4,20 +4,21 @@ import { supabase } from '@/lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, structured_note } = body;
+    const { file_id, transcription_text, status } = body;
     
-    if (!id) {
+    if (!file_id) {
       return NextResponse.json(
-        { error: 'Transcription ID is required' },
+        { error: 'File ID is required' },
         { status: 400 }
       );
     }
     
     // Update the transcription in the database
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('transcriptions')
-      .update({ structured_note })
-      .eq('id', id);
+      .update({ transcription_text, status })
+      .eq('file_id', file_id)
+      .select('id');
     
     if (error) {
       console.error('Error updating transcription:', error);
@@ -27,9 +28,16 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    return NextResponse.json({ success: true });
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { error: 'Transcription not found' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({ success: true, id: data[0].id });
   } catch (err) {
-    console.error('Error in update-transcription API:', err);
+    console.error('Error in update-transcription-text API:', err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

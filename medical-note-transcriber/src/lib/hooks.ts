@@ -5,6 +5,7 @@ export interface Transcription {
   id: number;
   file_id: string;
   transcription_text: string | null;
+  structured_note: string | null;
   status: 'processing' | 'completed' | 'error';
   created_at: string;
 }
@@ -17,7 +18,7 @@ const fetcher = async (key: string) => {
   
   const { data, error } = await supabase
     .from(table)
-    .select('id, file_id, status, created_at, transcription_text')
+    .select('id, file_id, status, created_at, transcription_text, structured_note')
     .order('created_at', { ascending: false })
     .limit(limitNum);
   
@@ -77,4 +78,46 @@ export async function deleteTranscription(id: number, fileId: string) {
   }
   
   return true;
+}
+
+// Function to update a structured note
+export async function updateStructuredNote(id: number, structuredNote: string) {
+  const response = await fetch('/api/update-transcription', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ id, structured_note: structuredNote }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to update structured note');
+  }
+  
+  return true;
+}
+
+// Function to generate a structured note
+export async function generateStructuredNote(transcriptionText: string) {
+  try {
+    const response = await fetch('http://localhost:8002/structure-note', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transcription_text: transcriptionText }),
+      mode: 'cors', // Add CORS mode
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to generate structured note');
+    }
+    
+    const data = await response.json();
+    return data.structured_note;
+  } catch (err) {
+    console.error('Error generating structured note:', err);
+    return null;
+  }
 }
