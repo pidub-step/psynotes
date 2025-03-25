@@ -107,6 +107,7 @@ export async function generateStructuredNote(transcriptionText: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ transcription_text: transcriptionText }),
+      mode: 'cors', // Add CORS mode
     });
     
     if (!response.ok) {
