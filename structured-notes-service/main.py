@@ -56,10 +56,10 @@ class StructureNoteResponse(BaseModel):
 
 async def generate_structured_note(transcription_text: str) -> str:
     """Generates structured note using OpenAI API."""
-    prompt = """
+    prompt = f"""
     You are a medical assistant tasked with structuring a doctor's note into a specific format. Given the following transcribed note:
 
-    {}
+    {transcription_text}
 
     Output the structured note in this exact format:
 
@@ -103,8 +103,7 @@ async def generate_structured_note(transcription_text: str) -> str:
     - Do not invent information; use only what is present in the note.
 
     Please provide the structured note in French.
-    """.format(transcription_text)
-    
+    """
     try:
         response = openai_client.chat.completions.create(
             model="gpt-4",
