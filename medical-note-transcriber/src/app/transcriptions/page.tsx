@@ -113,82 +113,100 @@ export default function TranscriptionsPage() {
   // Set up Supabase realtime subscription
   useEffect(() => {
     console.log('Setting up Supabase realtime subscription');
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
 
-    const subscription = supabase
-      .channel('transcriptions-changes')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'transcriptions'
-      }, (payload) => {
-        console.log('Received INSERT event:', payload);
-        // Optimistically update the UI with the new transcription
-        if (payload.new) {
-          mutate((currentData) => {
-            if (!currentData) return currentData;
-            // Add the new transcription to the beginning of the list
-            return [payload.new as Transcription, ...currentData];
-          }, false); // false means don't revalidate with the server yet
-        }
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'transcriptions'
-      }, (payload) => {
-        console.log('Received UPDATE event:', payload);
-        // Optimistically update the specific transcription that changed
-        if (payload.new) {
-          mutate((currentData) => {
-            if (!currentData) return currentData;
-            // Replace the updated transcription in the list
-            return currentData.map(item =>
-              item.id === payload.new.id ? (payload.new as Transcription) : item
-            );
-          }, false); // false means don't revalidate with the server yet
-        }
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'transcriptions'
-      }, (payload) => {
-        console.log('Received DELETE event:', payload);
-        // Optimistically remove the deleted transcription
-        if (payload.old) {
-          mutate((currentData) => {
-            if (!currentData) return currentData;
-            // Filter out the deleted transcription
-            return currentData.filter(item => item.id !== payload.old.id);
-          }, false); // false means don't revalidate with the server yet
-        }
-      })
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to transcriptions changes');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Failed to subscribe to transcriptions changes');
-          setError('Failed to connect to real-time updates. Please refresh the page.');
-        }
-      });
-
-    // Add a fallback polling mechanism in case realtime fails
+    // Always poll for updates regardless of realtime status
     const pollingInterval = setInterval(() => {
-      // Only poll if there are processing transcriptions
-      if (transcriptions.some(t => t.status === 'processing')) {
-        console.log('Polling for updates due to processing transcriptions');
-        mutate();
-      }
+      console.log('Polling for updates');
+      mutate();
     }, 10000); // Poll every 10 seconds
 
-    // Clean up when component unmounts
-    return () => {
-      console.log('Cleaning up Supabase realtime subscription');
-      subscription.unsubscribe();
-      clearInterval(pollingInterval);
-    };
-  }, [mutate, transcriptions]);
+    try {
+      // Create a channel with a unique name to avoid conflicts
+      const channelName = `transcriptions-changes-${Date.now()}`;
+      console.log(`Creating channel: ${channelName}`);
+
+      const subscription = supabase
+        .channel(channelName)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'transcriptions'
+        }, (payload) => {
+          console.log('Received INSERT event:', payload);
+          // Optimistically update the UI with the new transcription
+          if (payload.new) {
+            mutate((currentData) => {
+              if (!currentData) return currentData;
+              // Add the new transcription to the beginning of the list
+              return [payload.new as Transcription, ...currentData];
+            }, false); // false means don't revalidate with the server yet
+          }
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transcriptions'
+        }, (payload) => {
+          console.log('Received UPDATE event:', payload);
+          // Optimistically update the specific transcription that changed
+          if (payload.new) {
+            mutate((currentData) => {
+              if (!currentData) return currentData;
+              // Replace the updated transcription in the list
+              return currentData.map(item =>
+                item.id === payload.new.id ? (payload.new as Transcription) : item
+              );
+            }, false); // false means don't revalidate with the server yet
+          }
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'transcriptions'
+        }, (payload) => {
+          console.log('Received DELETE event:', payload);
+          // Optimistically remove the deleted transcription
+          if (payload.old) {
+            mutate((currentData) => {
+              if (!currentData) return currentData;
+              // Filter out the deleted transcription
+              return currentData.filter(item => item.id !== payload.old.id);
+            }, false); // false means don't revalidate with the server yet
+          }
+        })
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to transcriptions changes');
+            setError(null); // Clear any previous errors
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Failed to subscribe to transcriptions changes');
+            console.error('This is expected if Realtime is not enabled in your Supabase project');
+            console.error('Falling back to polling mechanism');
+            // Don't show error to user since we have polling as fallback
+            // setError('Failed to connect to real-time updates. Using polling as fallback.');
+          }
+        });
+
+      // Clean up when component unmounts
+      return () => {
+        console.log('Cleaning up Supabase realtime subscription');
+        try {
+          subscription.unsubscribe();
+        } catch (e) {
+          console.error('Error unsubscribing:', e);
+        }
+        clearInterval(pollingInterval);
+      };
+    } catch (error) {
+      console.error('Error setting up realtime subscription:', error);
+      // Return cleanup for polling only
+      return () => {
+        clearInterval(pollingInterval);
+      };
+    }
+  }, [mutate]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
