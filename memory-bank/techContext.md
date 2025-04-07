@@ -44,8 +44,10 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
 2. **Python FastAPI**
    - Microservice framework for transcription service
+   - Microservice framework for structured notes service
    - High performance and easy API development
    - Asynchronous request handling
+   - CORS middleware for cross-origin requests
    - OpenAPI documentation
    - Version: Latest
 
@@ -58,7 +60,14 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Robust to background noise
    - Version: Latest
 
-4. **ffmpeg**
+4. **OpenAI GPT-4 API**
+   - Advanced text generation and analysis
+   - Used for structured notes generation
+   - Medical terminology understanding
+   - Format standardization capabilities
+   - Version: Latest
+
+5. **ffmpeg**
    - Audio processing library
    - Splitting long audio files
    - Format conversion if needed
@@ -76,6 +85,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
 2. **Heroku** (or similar)
    - Transcription service hosting
+   - Structured notes service hosting
    - Support for longer-running processes
    - Python runtime environment
    - Version: Latest
@@ -105,6 +115,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
 5. **OpenAI Account**
    - Required for GPT-4o Transcribe API access
+   - Required for GPT-4 API access
    - Setup: [OpenAI Platform](https://platform.openai.com/)
 
 ### Local Development Setup
@@ -190,7 +201,24 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    uvicorn main:app --reload
    ```
 
-5. **Environment Variables**
+5. **Structured Notes Service Setup**
+   ```bash
+   # Create directory for service
+   mkdir structured-notes-service
+   cd structured-notes-service
+
+   # Create virtual environment
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+   # Install dependencies
+   pip install fastapi uvicorn openai requests python-dotenv supabase
+
+   # Start development server
+   uvicorn main:app --reload --host 0.0.0.0 --port 8002
+   ```
+
+6. **Environment Variables**
    - Frontend (.env.local):
      ```
      NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
@@ -204,8 +232,16 @@ The Medical Note Transcription App uses a modern technology stack designed for s
      PORT=8000
      HOST=0.0.0.0
      ```
+   - Structured Notes Service (.env):
+     ```
+     OPENAI_API_KEY=your-openai-api-key
+     SUPABASE_URL=your-supabase-url
+     SUPABASE_SERVICE_KEY=your-supabase-service-key
+     PORT=8002
+     HOST=0.0.0.0
+     ```
 
-6. **Next.js Configuration**
+7. **Next.js Configuration**
    ```typescript
    // next.config.ts
    import type { NextConfig } from "next";
@@ -238,7 +274,12 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Rate limits based on OpenAI account tier
    - Cost considerations for long recordings
 
-2. **Supabase Limits**
+2. **GPT-4 API Constraints**
+   - Token limits for input and output
+   - Rate limits based on OpenAI account tier
+   - Cost considerations for frequent structured note generation
+
+3. **Supabase Limits**
    - Storage quotas based on plan
    - Database connection limits
    - Edge Function execution time limits
@@ -255,15 +296,39 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Longer recordings take more time to process
    - User expectations need to be managed with status indicators
 
-3. **Mobile Device Limitations**
+3. **Structured Notes Generation Time**
+   - Processing time depends on transcription length
+   - GPT-4 API has variable response times
+   - User feedback needed during processing
+
+4. **Mobile Device Limitations**
    - Battery impact during long recordings
    - Storage space for temporary files
    - Network reliability for uploads
 
-4. **UI Performance**
+5. **UI Performance**
    - Realtime updates vs. polling trade-offs
    - React rendering optimizations
    - Optimistic UI updates for better user experience
+   - Modal rendering performance considerations
+
+### Security Considerations
+
+1. **API Key Protection**
+   - Environment variables for sensitive information
+   - .env.example files with placeholders
+   - .gitignore configuration to prevent committing sensitive files
+   - Proper handling of API keys in git history
+
+2. **CORS Configuration**
+   - Proper CORS middleware setup for backend services
+   - Appropriate headers for cross-origin requests
+   - Security implications of allowing cross-origin requests
+
+3. **Data Privacy**
+   - Medical information requires careful handling
+   - Secure storage and transmission of sensitive data
+   - Compliance considerations for medical information
 
 ## Dependencies and External Services
 
@@ -285,6 +350,8 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - ffmpeg: (system dependency)
    - python-dotenv: ^latest
    - requests: ^latest
+   - supabase: ^latest
+   - fastapi.middleware.cors: ^latest
 
 ### External Services
 
@@ -297,7 +364,7 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Account required
    - API key needed
    - Credit card required for API usage
-   - Models: gpt-4o-transcribe, gpt-4o-mini-transcribe
+   - Models: gpt-4o-transcribe, gpt-4o-mini-transcribe, gpt-4
 
 3. **Vercel**
    - Account required
@@ -325,14 +392,29 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    │   ├── src/                      # Source code
    │   │   ├── app/                  # Next.js App Router
    │   │   │   ├── api/              # API routes
+   │   │   │   │   ├── transcribe/   # Transcription API
+   │   │   │   │   ├── update-transcription/        # Update API
+   │   │   │   │   ├── update-transcription-text/   # Update text API
+   │   │   │   │   └── delete-transcription/        # Delete API
    │   │   │   ├── record/           # Recording page
    │   │   │   └── transcriptions/   # Transcriptions page
+   │   │   ├── components/           # React components
+   │   │   │   ├── RecordingCard.tsx # Recording card component
+   │   │   │   ├── ShineBorder.tsx   # UI component
+   │   │   │   ├── Sidebar.tsx       # Navigation component
+   │   │   │   ├── StructuredNoteModal.tsx # Structured note modal
+   │   │   │   └── TranscriptionSkeleton.tsx # Loading component
    │   │   ├── lib/                  # Shared utilities
    │   │   └── types/                # TypeScript types
    │   ├── transcription-service/    # Python FastAPI service
    │   │   ├── main.py               # Service entry point
    │   │   └── requirements.txt      # Python dependencies
    │   └── scripts/                  # Utility scripts
+   ├── structured-notes-service/     # Structured notes service
+   │   ├── main.py                   # Service entry point
+   │   ├── requirements.txt          # Python dependencies
+   │   ├── .env.example              # Environment variables example
+   │   └── .gitignore                # Git ignore configuration
    ├── mcp-servers/                  # MCP server implementations
    │   ├── supabase-server/          # Supabase MCP server
    │   └── vercel-server/            # Vercel MCP server
@@ -343,6 +425,9 @@ The Medical Note Transcription App uses a modern technology stack designed for s
        ├── techContext.md            # Technical context
        ├── activeContext.md          # Current state
        ├── progress.md               # Progress tracking
+       ├── sni-prd.md                # Structured notes PRD
+       ├── sni-imp.md                # Structured notes implementation
+       ├── sni-tech-stack.md         # Structured notes tech stack
        └── .clinerules               # Project intelligence
    ```
 
@@ -360,9 +445,11 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 3. **OpenAI Documentation**
    - [GPT-4o Transcribe API Docs](https://platform.openai.com/docs/api-reference/audio)
    - [GPT-4o Models](https://platform.openai.com/docs/models)
+   - [GPT-4 API Docs](https://platform.openai.com/docs/api-reference/chat)
 
 4. **FastAPI Documentation**
    - [FastAPI Docs](https://fastapi.tiangolo.com/)
+   - [CORS Middleware](https://fastapi.tiangolo.com/tutorial/cors/)
 
 5. **ffmpeg Documentation**
    - [ffmpeg Docs](https://ffmpeg.org/documentation.html)

@@ -1,4 +1,4 @@
- clinerules - Project Intelligence for Medical Note Transcription App
+clinerules - Project Intelligence for Medical Note Transcription App
 
 ## Project Patterns and Preferences
 
@@ -14,6 +14,7 @@ This file captures important patterns preferences and project intelligence for t
 
 2. **Backend Code Organization**
    - FastAPI for the transcription service
+   - FastAPI for the structured notes service
    - RESTful API design
    - Async/await for asynchronous operations
    - Environment variables for configuration
@@ -51,19 +52,33 @@ This file captures important patterns preferences and project intelligence for t
    - Combine split transcriptions seamlessly
    - Store results in PostgreSQL
 
-4. **Status Updates**
+4. **Structured Notes Generation**
+   - Use OpenAI GPT-4 for structured note generation
+   - Transform raw transcriptions into structured medical notes
+   - Follow specific formatting rules for medical notes
+   - Handle special cases like "normal" physical exams
+   - Replace medical terminology (e.g., "hypertension" to "HTA")
+
+5. **Status Updates**
    - Use Supabase Realtime for live updates
    - Implement optimistic UI updates for better UX
    - Clear status indicators in the UI
    - Appropriate error messages for failures
    - Webhook-style updates from transcription service to frontend
 
-5. **UI Performance Optimization**
+6. **UI Performance Optimization**
    - Avoid polling mechanisms that cause UI flashing
    - Use Supabase Realtime for efficient updates
    - Handle events individually rather than refetching all data
    - Implement optimistic UI updates for immediate feedback
    - Consider disabling React Strict Mode in development for smoother experience
+
+7. **Environment Variable Handling**
+   - Use .env files for local development
+   - Create .env.example files with placeholders
+   - Configure .gitignore to prevent committing sensitive information
+   - Use environment variables for all sensitive information
+   - Remove API keys from git history if accidentally committed
 
 ## User Experience Patterns
 
@@ -84,11 +99,18 @@ This file captures important patterns preferences and project intelligence for t
    - Fallback options where possible
    - Clear next steps for user when errors occur
 
+4. **Modal Interactions**
+   - Use modals for focused tasks (structured note editing)
+   - Provide clear actions (save, copy)
+   - Maintain context while providing detailed view
+   - Ensure modals are responsive on all devices
+
 ## Development Workflow
 
 1. **Local Development**
    - Next.js development server for frontend
    - Local FastAPI server for transcription service
+   - Local FastAPI server for structured notes service
    - Supabase project for storage and database
    - Environment variables for configuration
    - Run npm commands from the correct directory (medical-note-transcriber)
@@ -102,6 +124,7 @@ This file captures important patterns preferences and project intelligence for t
 3. **Deployment Process**
    - Vercel for frontend deployment
    - Heroku or similar for transcription service
+   - Heroku or similar for structured notes service
    - Environment-specific configuration
    - Ensure ffmpeg availability in deployment environment
 
@@ -111,6 +134,7 @@ This file captures important patterns preferences and project intelligence for t
    - Use feature branches for new functionality
    - Merge changes through pull requests
    - Force push when necessary to ensure synchronization
+   - Resolve merge conflicts carefully
 
 ## Known Challenges and Solutions
 
@@ -159,6 +183,16 @@ This file captures important patterns preferences and project intelligence for t
    - Solution: Added root package.json that forwards commands to medical-note-transcriber directory
    - Reference: Root package.json contains scripts that cd into medical-note-transcriber before running commands
 
+10. **API Key Security**
+    - Challenge: API keys must be kept secure
+    - Solution: Use environment variables, .env.example files, proper .gitignore configuration
+    - Reference: Remove sensitive information from git history if accidentally committed
+
+11. **Cross-Origin Requests**
+    - Challenge: Browser security prevents cross-origin requests
+    - Solution: Implement CORS middleware in backend services
+    - Reference: Configure appropriate CORS headers for all API endpoints
+
 ## New Technical Insights
 
 1. **Audio Quality Considerations**
@@ -171,37 +205,56 @@ This file captures important patterns preferences and project intelligence for t
    - Splitting audio files allows handling recordings of any length
    - Temporary file handling requires careful cleanup to avoid resource leaks
 
-3. **Supabase Integration**
+3. **Structured Notes Service Architecture**
+   - Separate service provides clear separation of concerns
+   - GPT-4 is effective for transforming raw transcriptions into structured notes
+   - CORS middleware is essential for cross-origin requests from the frontend
+
+4. **Supabase Integration**
    - Signed URLs provide secure access to stored audio files
    - Storage policies need careful configuration for proper access control
    - Database schema should include status tracking for transcription process
    - Realtime subscriptions provide efficient updates without polling
 
-4. **Error Recovery Mechanisms**
+5. **Error Recovery Mechanisms**
    - Implement comprehensive error handling in the transcription service
    - Use try/catch blocks with specific error types
    - Update transcription status to 'error' when issues occur
    - Provide clear error messages to the frontend
 
-5. **UI Performance Optimization**
+6. **UI Performance Optimization**
    - Polling mechanisms can cause UI flashing and should be avoided
    - Supabase Realtime provides efficient updates without polling
    - Optimistic UI updates provide immediate feedback to users
    - React Strict Mode can cause double-rendering in development
 
-6. **Git Repository Management**
+7. **Git Repository Management**
    - Submodules can complicate development workflow
    - Converting submodules to regular directories simplifies repository structure
    - Single repository approach improves developer experience
    - Feature branches provide isolation for new functionality
    - Force push can be necessary to ensure synchronization between local and remote
 
-7. **Code Quality and Maintenance**
+8. **Code Quality and Maintenance**
    - Proper syntax and formatting are critical for application stability
    - Missing commas in imports and function parameters can cause runtime errors
    - Duplicate component definitions can lead to conflicts
    - Consistent error handling improves application reliability
    - Regular testing ensures all components work together correctly
+
+9. **Environment Variable Handling**
+   - .env files should never be committed to the repository
+   - .env.example files provide templates for required variables
+   - .gitignore configuration prevents committing sensitive information
+   - API keys should be stored securely in environment variables
+   - Accidentally committed API keys should be removed from git history
+
+10. **Modal Component Implementation**
+    - Modals provide focused UI for specific tasks
+    - Editing capabilities require state management
+    - Save and copy actions need clear user feedback
+    - Modals should be responsive on all devices
+    - Keyboard accessibility is important for usability
 
 ## Project Evolution
 
@@ -220,6 +273,11 @@ This section tracks key decisions and changes as the project evolves:
 - **Bug Fixes (March 23, 2025)**: Fixed syntax errors in record and transcriptions pages
 - **Workflow Improvement (March 23, 2025)**: Fixed npm run dev execution path issue
 - **Repository Synchronization (March 23, 2025)**: Force pushed local code to GitHub
+- **Structured Notes Feature (March 25, 2025)**: Implemented structured notes generation with GPT-4
+- **UI Enhancement (March 25, 2025)**: Added StructuredNoteModal component for viewing and editing
+- **API Enhancement (March 25, 2025)**: Added update-transcription-text endpoint
+- **Security Improvement (March 25, 2025)**: Fixed environment variable handling to prevent exposing API keys
+- **Conflict Resolution (March 25, 2025)**: Resolved merge conflicts in structured notes service files
 
 ## MCP Server Usage
 
@@ -269,6 +327,9 @@ This section captures user preferences and feedback as we gather it:
 - Preference for simplified git repository structure
 - Importance of proper syntax and code formatting
 - Preference for running the application from the correct directory
+- Preference for structured medical notes with specific formatting
+- Importance of secure handling of API keys and sensitive information
+- Preference for modal-based editing of structured notes
 
 ## Common Issues and Solutions
 
@@ -295,6 +356,24 @@ This section captures user preferences and feedback as we gather it:
    - Cause: Different code versions or history
    - Solution: Force push local code to GitHub when necessary
    - Example: `git add . && git commit -m "Fix syntax errors" && git push -f origin main`
+
+5. **API Key Exposure**
+   - Issue: API keys accidentally committed to the repository
+   - Cause: .env file not in .gitignore or keys hardcoded in source files
+   - Solution: Remove keys from git history, update .gitignore, use .env.example
+   - Example: `git rm --cached structured-notes-service/.env && git commit --amend -m "Remove API key"`
+
+6. **CORS Errors**
+   - Issue: "Access to fetch at 'http://localhost:8002' from origin 'http://localhost:3000' has been blocked by CORS policy"
+   - Cause: Missing CORS headers in backend service
+   - Solution: Implement CORS middleware in FastAPI service
+   - Example: Add `app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])`
+
+7. **Merge Conflicts**
+   - Issue: Conflicts when merging branches
+   - Cause: Same files modified in different branches
+   - Solution: Carefully resolve conflicts, keeping changes from both branches as appropriate
+   - Example: Resolve conflicts in .env.example by using placeholders with hyphens instead of underscores
 
 ---
 

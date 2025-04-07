@@ -12,6 +12,7 @@ graph TD
         UC[Upload Component]
         TD[Transcription Display]
         RS[Realtime Subscription]
+        SNM[Structured Note Modal]
     end
     
     subgraph "Storage (Supabase)"
@@ -24,6 +25,8 @@ graph TD
         EF[Edge Function]
         TS[Transcription Service]
         WA[GPT-4o Transcribe API]
+        SNS[Structured Notes Service]
+        GA[GPT-4 API]
     end
     
     UI --> RC
@@ -36,6 +39,10 @@ graph TD
     PG --> RT
     RT --> RS
     RS --> TD
+    TD --> SNM
+    SNM --> SNS
+    SNS --> GA
+    SNS --> PG
 ```
 
 ## Component Relationships
@@ -61,11 +68,18 @@ graph TD
    - Retrieves transcription from PostgreSQL
    - Displays transcription text with appropriate formatting
    - Shows transcription status (processing, completed)
+   - Provides button to view structured note
 
 5. **Realtime Subscription (RS)**
    - Subscribes to Supabase Realtime events
    - Updates UI in real-time when transcription status changes
    - Handles individual events for optimized performance
+
+6. **Structured Note Modal (SNM)**
+   - Displays structured note in a modal window
+   - Provides editing capabilities for the structured note
+   - Includes "Save" and "Copy" buttons for user interaction
+   - Communicates with Structured Notes Service
 
 ### Backend Components
 
@@ -75,6 +89,7 @@ graph TD
 
 2. **PostgreSQL Database (PG)**
    - Stores transcription metadata and text
+   - Stores structured note text
    - Maintains relationship between audio files and transcriptions
 
 3. **Realtime Service (RT)**
@@ -91,11 +106,24 @@ graph TD
    - Handles audio file processing
    - Manages communication with GPT-4o Transcribe API
    - Stores transcription results in PostgreSQL
+   - Communicates with update-transcription-text API endpoint
 
 6. **GPT-4o Transcribe API (WA)**
    - OpenAI's API for audio transcription (gpt-4o-transcribe or gpt-4o-mini-transcribe)
    - Processes audio chunks and returns text
    - State-of-the-art speech recognition with high accuracy
+
+7. **Structured Notes Service (SNS)**
+   - Python FastAPI microservice
+   - Transforms raw transcriptions into structured medical notes
+   - Uses OpenAI GPT-4 for text analysis and structuring
+   - Implements CORS middleware for cross-origin requests
+   - Communicates with PostgreSQL database
+
+8. **GPT-4 API (GA)**
+   - OpenAI's API for text generation and analysis
+   - Processes raw transcriptions and structures them according to predefined format
+   - Handles medical terminology and formatting rules
 
 ## Data Flow Patterns
 
@@ -127,6 +155,35 @@ sequenceDiagram
     Database->>RealtimeService: Broadcast Change Event
     RealtimeService->>Frontend: Push Update via Subscription
     Frontend->>User: Display Transcription
+```
+
+### Structured Notes Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant StructuredNoteModal
+    participant StructuredNotesService
+    participant GPT4API
+    participant Database
+    participant RealtimeService
+    
+    User->>Frontend: Click "View Structured Note"
+    Frontend->>StructuredNoteModal: Open Modal
+    StructuredNoteModal->>StructuredNotesService: Request Structured Note
+    StructuredNotesService->>Database: Fetch Raw Transcription
+    StructuredNotesService->>GPT4API: Send Transcription with Formatting Instructions
+    GPT4API->>StructuredNotesService: Return Structured Note
+    StructuredNotesService->>Database: Store Structured Note
+    Database->>RealtimeService: Broadcast Change Event
+    RealtimeService->>StructuredNoteModal: Push Update via Subscription
+    StructuredNoteModal->>User: Display Structured Note
+    User->>StructuredNoteModal: Edit Structured Note
+    User->>StructuredNoteModal: Click "Save"
+    StructuredNoteModal->>Database: Update Structured Note
+    User->>StructuredNoteModal: Click "Copy"
+    StructuredNoteModal->>User: Copy to Clipboard
 ```
 
 ## Key Technical Decisions
@@ -166,6 +223,26 @@ sequenceDiagram
    - Rationale: Simplifies development workflow and repository management
    - Implementation: Single repository with all project files
 
+8. **Separate Structured Notes Service**
+   - Decision: Create a separate service for structured notes generation
+   - Rationale: Separation of concerns, specialized processing for medical notes
+   - Implementation: FastAPI microservice with OpenAI GPT-4 integration
+
+9. **CORS Middleware for Structured Notes Service**
+   - Decision: Implement CORS middleware in the structured notes service
+   - Rationale: Allow cross-origin requests from the frontend
+   - Implementation: FastAPI CORSMiddleware with appropriate configuration
+
+10. **Modal Component for Structured Notes**
+    - Decision: Display structured notes in a modal component
+    - Rationale: Provides focused view while maintaining access to raw transcription
+    - Implementation: React modal component with editing capabilities
+
+11. **Environment Variable Handling**
+    - Decision: Implement proper environment variable handling
+    - Rationale: Secure sensitive information, prevent committing API keys
+    - Implementation: .env.example files with placeholders, .gitignore configuration
+
 ## Design Patterns
 
 1. **Event-Driven Architecture**
@@ -174,8 +251,9 @@ sequenceDiagram
    - Asynchronous processing decouples recording from transcription
 
 2. **Microservice Pattern**
-   - Separate services for frontend and transcription
+   - Separate services for frontend, transcription, and structured notes
    - Clear API boundaries between components
+   - Independent scaling and deployment
 
 3. **Observer Pattern**
    - Frontend subscribes to database changes via Realtime
@@ -195,6 +273,16 @@ sequenceDiagram
    - Update UI immediately before server confirmation
    - Fallback to server state if operation fails
    - Provides responsive user experience
+
+7. **Modal Pattern**
+   - Focused UI for specific tasks (structured note editing)
+   - Maintains context while providing detailed view
+   - Reduces UI clutter and improves user focus
+
+8. **Command Pattern**
+   - Encapsulates operations as objects (save, copy)
+   - Provides clear user actions with specific outcomes
+   - Simplifies UI interaction model
 
 ## Technical Constraints
 
@@ -218,3 +306,13 @@ sequenceDiagram
    - Constraint: Frequent updates can cause UI flashing
    - Mitigation: Use Realtime subscriptions with optimized event handling
    - Mitigation: Disable React Strict Mode in development for smoother experience
+
+6. **API Key Security**
+   - Constraint: API keys must be kept secure
+   - Mitigation: Use environment variables, .env.example files, proper .gitignore configuration
+   - Mitigation: Remove sensitive information from git history if accidentally committed
+
+7. **Cross-Origin Requests**
+   - Constraint: Browser security prevents cross-origin requests
+   - Mitigation: Implement CORS middleware in backend services
+   - Mitigation: Configure appropriate CORS headers for all API endpoints
