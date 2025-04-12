@@ -233,8 +233,9 @@ async def process_transcription(file_id: str, file_url: str, language: str = "en
             
             # Send the result back to the frontend
             try:
-                # This would typically be an API endpoint in your Next.js app
-                update_url = "http://localhost:3000/api/update-transcription-text"
+                # Get the frontend URL from environment variable
+                frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+                update_url = f"{frontend_url}/api/update-transcription-text"
                 print(f"Calling update API at {update_url} with file_id: {file_id}")
                 
                 payload = {
