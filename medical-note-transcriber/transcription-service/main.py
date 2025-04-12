@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import openai
 import requests
 import json
+import re
 
 # Load environment variables
 load_dotenv()
@@ -83,74 +84,95 @@ def split_audio(audio_path, chunk_size_mb=24) -> List[str]:
         print(f"Error splitting audio: {str(e)}")
         return []
 
-async def transcribe_chunk(chunk_path, language="en") -> Optional[str]:
+def post_process_transcription(text: str) -> str:
+    """Apply post-processing corrections to transcription."""
+    corrections = {
+        r'toxicoïde affecté': 'trouble schizo-affectif',
+        r'mammiférien': 'membre inférieur',
+        r'planète générale': "pas d'état général",
+        r'syndrome coronaire régulier': 'syndrome coronarien',
+        r'coup de coeur': 'cou, coeur',
+        r'MCRS': 'MC1S',
+        r'VRS': 'MVAS',
+    }
+    
+    processed_text = text
+    for error, correction in corrections.items():
+        processed_text = re.sub(error, correction, processed_text, flags=re.IGNORECASE)
+    
+    return processed_text
+
+async def transcribe_chunk(chunk_path: str) -> Optional[str]:
     """Transcribe a single audio chunk using OpenAI API."""
     try:
         with open(chunk_path, "rb") as audio_file:
-            transcription_response = openai_client.audio.transcriptions.create(
-                model="gpt-4o-transcribe",  # Using the latest model for better accuracy
+            transcription = openai_client.audio.transcriptions.create(
+                model="gpt-4o-transcribe",
                 file=audio_file,
-                language=language,
-                response_format="json",  # Required for gpt-4o-transcribe
-                include=["logprobs"],  # Get confidence scores
-                temperature=0,  # Lower temperature for more deterministic results
-                timestamp_granularities=["segment"]  # Get segment timestamps
+                language="fr-CA",
+                prompt="""Ce qui suit est une transcription médicale en français canadien. 
+                Le texte contient des abréviations et termes médicaux spécifiques comme:
+                MPOC (maladie pulmonaire obstructive chronique)
+                MCAS/MC1S (maladie coronarienne athérosclérotique)
+                MVAS (maladie vasculaire athérosclérotique)
+                TRS (trouble respiratoire du sommeil)
+                État général
+                Syndrome coronarien
+                Schizo-affectif
+                Membre inférieur
+                
+                Points importants:
+                - Distinguer entre 'état général' et 'état générale'
+                - 'Membre inférieur' et non 'mammifère'
+                - 'Syndrome coronarien' et non 'syndrome coronaire'
+                - Préserver la précision des abréviations médicales
+                """,
+                response_format="text"
             )
-            
-            # Extract the text from the JSON response
-            if isinstance(transcription_response, dict) and "text" in transcription_response:
-                return transcription_response["text"]
-            elif hasattr(transcription_response, "text"):
-                return transcription_response.text
-            else:
-                print(f"Unexpected response format: {transcription_response}")
-                return str(transcription_response)
+            # Apply post-processing
+            return post_process_transcription(transcription.text)
     except Exception as e:
-        print(f"Error transcribing chunk {chunk_path}: {str(e)}")
+        print(f"Error transcribing chunk: {str(e)}")
         return None
 
-async def transcribe_audio_file(audio_path, language="en") -> Optional[str]:
-    """
-    Transcribe audio using OpenAI's API with chunking support.
-    
-    Args:
-        audio_path (str): Path to the audio file to transcribe
-        
-    Returns:
-        str: Transcription text or None if failed
-    """
+async def transcribe_audio_file(audio_path: str) -> Optional[str]:
+    """Process and transcribe complete audio file."""
     try:
-        print(f"\n[*] Processing: {audio_path}")
+        # Optimize audio for speech recognition
+        optimized_audio = optimize_audio_for_speech(audio_path)
         
-        # Split audio if needed
-        chunks = split_audio(audio_path)
-        if not chunks:
-            return None
-            
-        # Transcribe each chunk
-        transcripts = []
-        for i, chunk_path in enumerate(chunks):
-            print(f"[*] Transcribing chunk {i+1}/{len(chunks)}...")
-            text = await transcribe_chunk(chunk_path, language)
+        # Split if larger than 25MB (OpenAI's limit)
+        chunks = split_audio(optimized_audio) if os.path.getsize(optimized_audio) > 25 * 1024 * 1024 else [optimized_audio]
+        
+        transcriptions = []
+        for chunk in chunks:
+            text = await transcribe_chunk(chunk)
             if text:
-                transcripts.append(text)
+                transcriptions.append(text)
             
-            # Clean up chunk file if it's not the original
-            if chunk_path != audio_path:
-                Path(chunk_path).unlink()
-                
-        if not transcripts:
-            print("[!] Error: No valid transcriptions generated")
-            return None
-            
-        # Combine transcriptions
-        full_transcript = " ".join(transcripts)
+        return " ".join(transcriptions) if transcriptions else None
         
-        return full_transcript
-            
     except Exception as e:
-        print(f"Error during transcription: {str(e)}")
+        print(f"Error processing audio file: {str(e)}")
         return None
+
+def optimize_audio_for_speech(audio_path: str) -> str:
+    """Optimize audio file for medical speech recognition."""
+    output_path = f"{audio_path}_optimized.wav"
+    try:
+        subprocess.run([
+            'ffmpeg', '-i', audio_path,
+            '-ar', '22050',      # Increased sample rate for better clarity
+            '-ac', '1',          # Keep mono
+            '-c:a', 'pcm_s16le', # 16-bit PCM encoding
+            '-af', 'highpass=f=50,lowpass=f=8000,volume=1.5', # Audio filters
+            '-q:a', '0',         # Highest quality
+            output_path
+        ], check=True, capture_output=True)
+        return output_path
+    except Exception as e:
+        print(f"Error optimizing audio: {str(e)}")
+        return audio_path  # Return original if optimization fails
 
 @app.get("/")
 async def root():
