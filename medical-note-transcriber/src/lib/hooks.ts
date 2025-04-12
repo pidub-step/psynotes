@@ -98,16 +98,18 @@ export async function updateStructuredNote(id: number, structuredNote: string) {
   return true;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8002';
+
 // Function to generate a structured note
 export async function generateStructuredNote(transcriptionText: string) {
   try {
-    const response = await fetch('http://localhost:8002/structure-note', {
+    const response = await fetch(`${BACKEND_URL}/structure-note`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ transcription_text: transcriptionText }),
-      mode: 'cors', // Add CORS mode
+      mode: 'cors',
     });
     
     if (!response.ok) {
