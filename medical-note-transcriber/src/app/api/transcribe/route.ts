@@ -27,8 +27,10 @@ export async function POST(request: NextRequest) {
       throw new Error(urlError.message);
     }
     
+    const transcriptionServiceUrl = process.env.NEXT_PUBLIC_TRANSCRIPTION_SERVICE_URL || 'https://western-fannie-pidub-1b38324c.koyeb.app';
+
     // Call the transcription service
-    const response = await fetch('http://localhost:8000/transcribe', {
+    const response = await fetch(`${transcriptionServiceUrl}/transcribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
