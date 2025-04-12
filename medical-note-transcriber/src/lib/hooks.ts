@@ -98,12 +98,13 @@ export async function updateStructuredNote(id: number, structuredNote: string) {
   return true;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8002';
+const STRUCTURED_NOTES_SERVICE_URL = process.env.NEXT_PUBLIC_STRUCTURED_NOTES_SERVICE_URL || 'http://localhost:8002';
 
 // Function to generate a structured note
 export async function generateStructuredNote(transcriptionText: string) {
   try {
-    const response = await fetch(`${BACKEND_URL}/structure-note`, {
+    console.log('Using structured notes service URL:', STRUCTURED_NOTES_SERVICE_URL); // Debug log
+    const response = await fetch(`${STRUCTURED_NOTES_SERVICE_URL}/structure-note`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -120,6 +121,7 @@ export async function generateStructuredNote(transcriptionText: string) {
     return data.structured_note;
   } catch (err) {
     console.error('Error generating structured note:', err);
+    console.error('Service URL used:', STRUCTURED_NOTES_SERVICE_URL); // Debug log
     return null;
   }
 }
