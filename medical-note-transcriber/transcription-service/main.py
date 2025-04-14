@@ -135,7 +135,7 @@ async def transcribe_chunk(chunk_path: str) -> Optional[str]:
         print(f"Error transcribing chunk: {str(e)}")
         return None
 
-async def transcribe_audio_file(audio_path: str) -> Optional[str]:
+async def transcribe_audio_file(audio_path: str, language: str = "fr-CA") -> Optional[str]:
     """Process and transcribe complete audio file."""
     try:
         # Optimize audio for speech recognition
@@ -230,7 +230,7 @@ async def transcribe_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def process_transcription(file_id: str, file_url: str, language: str = "en"):
+async def process_transcription(file_id: str, file_url: str, language: str = "fr-CA"):
     """Process the transcription in the background"""
     try:
         print(f"Starting transcription for {file_id}")
@@ -244,8 +244,8 @@ async def process_transcription(file_id: str, file_url: str, language: str = "en
             temp_file.write(response.content)
         
         try:
-            # Transcribe the file
-            transcription_text = await transcribe_audio_file(temp_file_path, language)
+            # Transcribe the file - now passing only one argument
+            transcription_text = await transcribe_audio_file(temp_file_path)
             
             if not transcription_text:
                 raise Exception("Failed to transcribe audio")
