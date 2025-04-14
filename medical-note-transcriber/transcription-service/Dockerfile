@@ -21,6 +21,9 @@ COPY . .
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
 
+# Ensure ffmpeg is in PATH for the non-root user
+ENV PATH="/usr/bin:${PATH}"
+
 # Switch to non-root user
 USER appuser
 
