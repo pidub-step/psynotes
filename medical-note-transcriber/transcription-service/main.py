@@ -102,31 +102,60 @@ def post_process_transcription(text: str) -> str:
     
     return processed_text
 
-async def transcribe_chunk(chunk_path: str) -> Optional[str]:
+async def transcribe_chunk(chunk_path: str, language: str = "fr") -> Optional[str]:
     """Transcribe a single audio chunk using OpenAI API."""
     try:
         with open(chunk_path, "rb") as audio_file:
+            # Determine prompt based on language
+            if language.startswith("fr"):
+                # Enhanced French prompt for medical transcription accuracy
+                prompt = """Ce qui suit est une transcription d'une note médicale dictée en français québécois. 
+                Le texte contient des termes médicaux, des abréviations courantes et potentiellement des anglicismes.
+                Prioriser la précision pour tous les termes médicaux et les noms de médicaments.
+
+                Termes et abréviations fréquents à surveiller :
+                - MPOC (Maladie Pulmonaire Obstructive Chronique)
+                - HTA (Hypertension Artérielle)
+                - MCAS / MC1S (Maladie Coronarienne Athérosclérotique / Sténose)
+                - MVAS (Maladie Vasculaire Athérosclérotique)
+                - DB (Diabète)
+                - FA (Fibrillation Auriculaire)
+                - IC (Insuffisance Cardiaque)
+                - IRC (Insuffisance Rénale Chronique)
+                - IVRS (Infection des Voies Respiratoires Supérieures)
+                - Sx (Symptômes)
+                - Rx (Prescription / Médicaments)
+                - ATCD (Antécédents)
+                - EP (Examen Physique)
+                - MI (Membre Inférieur)
+                - MS (Membre Supérieur)
+                - B1B2 (Bruits cardiaques normaux)
+                - MV (Murmure Vésiculaire)
+                - SAG (Sans Aucun Problème / Stable)
+                - TRS (Trouble Respiratoire du Sommeil)
+                - État général (et non 'état générale')
+                - Syndrome coronarien (et non 'syndrome coronaire')
+                - Trouble schizo-affectif (et non 'toxicoïde affecté')
+                - Cou, coeur (et non 'coup de coeur')
+
+                Instructions importantes :
+                - Transcrire littéralement, y compris les hésitations ('euh') ou répétitions si présentes.
+                - Conserver les anglicismes s'ils sont utilisés par le locuteur (ex: 'check-up', 'feeling').
+                - Utiliser la terminologie médicale précise même si la prononciation est approximative.
+                - Faire attention aux chiffres, dosages de médicaments et unités.
+                - Préserver la distinction entre singulier et pluriel (ex: 'membre inférieur' vs 'membres inférieurs').
+                """
+            else: # Default to English prompt or add more languages as needed
+                prompt = """The following is a medical transcription in English. 
+                The text contains specific medical abbreviations and terms.
+                Prioritize accuracy for medical terminology, drug names, and dosages.
+                Prioritize accuracy for medical terminology."""
+
             transcription = openai_client.audio.transcriptions.create(
                 model="gpt-4o-transcribe",
                 file=audio_file,
-                language="fr",  # Changed from fr-CA to fr
-                prompt="""Ce qui suit est une transcription médicale en français. 
-                Le texte contient des abréviations et termes médicaux spécifiques comme:
-                MPOC (maladie pulmonaire obstructive chronique)
-                MCAS/MC1S (maladie coronarienne athérosclérotique)
-                MVAS (maladie vasculaire athérosclérotique)
-                TRS (trouble respiratoire du sommeil)
-                État général
-                Syndrome coronarien
-                Schizo-affectif
-                Membre inférieur
-                
-                Points importants:
-                - Distinguer entre 'état général' et 'état générale'
-                - 'Membre inférieur' et non 'mammifère'
-                - 'Syndrome coronarien' et non 'syndrome coronaire'
-                - Préserver la précision des abréviations médicales
-                """,
+                language=language, # Use the provided language parameter
+                prompt=prompt,
                 response_format="text"
             )
             # Apply post-processing
@@ -146,7 +175,8 @@ async def transcribe_audio_file(audio_path: str, language: str = "fr") -> Option
         
         transcriptions = []
         for chunk in chunks:
-            text = await transcribe_chunk(chunk)
+            # Pass the language parameter to transcribe_chunk
+            text = await transcribe_chunk(chunk, language=language)
             if text:
                 transcriptions.append(text)
             
@@ -157,21 +187,41 @@ async def transcribe_audio_file(audio_path: str, language: str = "fr") -> Option
         return None
 
 def optimize_audio_for_speech(audio_path: str) -> str:
-    """Optimize audio file for medical speech recognition."""
+    """Optimize audio file for medical speech recognition, keeping stereo."""
     output_path = f"{audio_path}_optimized.wav"
     try:
+        # Get original audio info (sample rate, channels)
+        probe_cmd = [
+            'ffprobe', '-v', 'error', '-select_streams', 'a:0',
+            '-show_entries', 'stream=sample_rate,channels',
+            '-of', 'default=noprint_wrappers=1:nokey=1', audio_path
+        ]
+        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True)
+        original_sample_rate, original_channels = probe_result.stdout.strip().split('\n')
+
+        # Keep original sample rate and channels if stereo, otherwise mono
+        channels_to_keep = '2' if int(original_channels) >= 2 else '1'
+        
+        print(f"[*] Optimizing audio: {audio_path} (Rate: {original_sample_rate}, Channels: {original_channels} -> {channels_to_keep})")
+
         subprocess.run([
             'ffmpeg', '-i', audio_path,
-            '-ar', '22050',      # Increased sample rate for better clarity
-            '-ac', '1',          # Keep mono
-            '-c:a', 'pcm_s16le', # 16-bit PCM encoding
-            '-af', 'highpass=f=50,lowpass=f=8000,volume=1.5', # Audio filters
-            '-q:a', '0',         # Highest quality
+            '-ar', original_sample_rate, # Keep original sample rate
+            '-ac', channels_to_keep,     # Keep stereo if original is stereo
+            '-c:a', 'pcm_s16le',         # 16-bit PCM encoding
+            '-af', 'highpass=f=80,lowpass=f=10000,volume=1.5', # Adjusted filters for potentially wider range
+            '-q:a', '0',                 # Highest quality
+            '-y',                        # Overwrite output file if it exists
             output_path
         ], check=True, capture_output=True)
+        
+        print(f"[*] Optimized audio saved to: {output_path}")
         return output_path
     except Exception as e:
         print(f"Error optimizing audio: {str(e)}")
+        # Print ffmpeg stderr if available
+        if isinstance(e, subprocess.CalledProcessError):
+            print(f"ffmpeg stderr: {e.stderr}")
         return audio_path  # Return original if optimization fails
 
 @app.get("/")
@@ -244,8 +294,8 @@ async def process_transcription(file_id: str, file_url: str, language: str = "fr
             temp_file.write(response.content)
         
         try:
-            # Transcribe the file - now passing only one argument
-            transcription_text = await transcribe_audio_file(temp_file_path)
+            # Transcribe the file, passing the selected language
+            transcription_text = await transcribe_audio_file(temp_file_path, language=language)
             
             if not transcription_text:
                 raise Exception("Failed to transcribe audio")
