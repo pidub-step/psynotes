@@ -83,11 +83,14 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Edge network for global performance
    - Version: Latest
 
-2. **Heroku** (or similar)
-   - Transcription service hosting
-   - Structured notes service hosting
+2. **Koyeb**
+   - Transcription service hosting (western-fannie-pidub-1b38324c.koyeb.app)
+   - Structured notes service hosting (eventual-cyndy-pidub-18f48796.koyeb.app)
+   - Micro instances (0.5 vCPU, 512MB RAM, 5GB Disk)
+   - Fixed scaling (1 instance/region)
+   - Located in Washington, D.C.
    - Support for longer-running processes
-   - Python runtime environment
+   - Python runtime environment with Docker support
    - Version: Latest
 
 ## Development Environment Setup
@@ -371,10 +374,11 @@ The Medical Note Transcription App uses a modern technology stack designed for s
    - Free tier available for development
    - Production tier recommended for deployment
 
-4. **Heroku** (or similar)
+4. **Koyeb**
    - Account required
-   - Free tier may be limited for production use
-   - Paid tier recommended for reliable service
+   - Micro instances for cost-effective deployment
+   - Support for Docker and buildpacks
+   - Fixed scaling options for reliable service
 
 ## Repository Structure
 
@@ -456,4 +460,4 @@ The Medical Note Transcription App uses a modern technology stack designed for s
 
 6. **Deployment Documentation**
    - [Vercel Deployment](https://vercel.com/docs/deployment)
-   - [Heroku Python Deployment](https://devcenter.heroku.com/categories/python-support)
+   - [Koyeb Python Deployment](https://www.koyeb.com/docs/deploy/python)

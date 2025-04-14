@@ -1,6 +1,6 @@
 # Implementation Plan: Structured Medical Note Formatting Feature
 
-This implementation plan provides step-by-step instructions for AI developers to add the Structured Medical Note Formatting feature to the Medical Note Transcription App. The feature generates structured notes from transcribed audio using OpenAI's GPT model, stores them in Supabase, and provides a user interface for viewing, editing, and copying the structured notes. The plan leverages the existing tech stack—Next.js 15 (App Router) on Vercel, FastAPI on Heroku (or similar), Supabase PostgreSQL with Realtime, and OpenAI GPT-4—and ensures the system can handle very long notes. Each step is small, specific, and includes a test to validate correct implementation.
+This implementation plan provides step-by-step instructions for AI developers to add the Structured Medical Note Formatting feature to the Medical Note Transcription App. The feature generates structured notes from transcribed audio using OpenAI's GPT model, stores them in Supabase, and provides a user interface for viewing, editing, and copying the structured notes. The plan leverages the existing tech stack—Next.js 15 (App Router) on Vercel, FastAPI on Koyeb, Supabase PostgreSQL with Realtime, and OpenAI GPT-4—and ensures the system can handle very long notes. Each step is small, specific, and includes a test to validate correct implementation.
 
 ---
 
@@ -90,7 +90,7 @@ This implementation plan provides step-by-step instructions for AI developers to
 **Instructions:**
 1. In the FastAPI project, prepare it for deployment:
    - Commit all changes and push them to your repository.
-   - Deploy to Heroku (or your platform) using your usual deployment process.
+   - Deploy to Koyeb using your usual deployment process.
    - Set environment variables in the deployment settings for `OPENAI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_KEY`.
 2. In the Next.js project:
    - Commit all changes and push them to your repository.
@@ -115,7 +115,7 @@ This implementation plan provides step-by-step instructions for AI developers to
    - Combine the results into a single structured note and update Supabase.
 2. Monitor performance on the deployed FastAPI service:
    - Review logs for response times with large inputs.
-   - Increase resources (e.g., upgrade Heroku dyno size) if processing takes too long.
+   - Increase resources (e.g., upgrade Koyeb instance size) if processing takes too long.
 
 **Test:**
 - Create a very long transcription (e.g., simulate a 90-minute recording) and insert it into the "transcriptions" table.

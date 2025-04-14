@@ -123,8 +123,8 @@ This file captures important patterns preferences and project intelligence for t
 
 3. **Deployment Process**
    - Vercel for frontend deployment
-   - Heroku or similar for transcription service
-   - Heroku or similar for structured notes service
+   - Koyeb for transcription service
+   - Koyeb for structured notes service
    - Environment-specific configuration
    - Ensure ffmpeg availability in deployment environment
 
