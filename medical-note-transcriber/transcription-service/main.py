@@ -109,8 +109,8 @@ async def transcribe_chunk(chunk_path: str) -> Optional[str]:
             transcription = openai_client.audio.transcriptions.create(
                 model="gpt-4o-transcribe",
                 file=audio_file,
-                language="fr-CA",
-                prompt="""Ce qui suit est une transcription médicale en français canadien. 
+                language="fr",  # Changed from fr-CA to fr
+                prompt="""Ce qui suit est une transcription médicale en français. 
                 Le texte contient des abréviations et termes médicaux spécifiques comme:
                 MPOC (maladie pulmonaire obstructive chronique)
                 MCAS/MC1S (maladie coronarienne athérosclérotique)
@@ -135,7 +135,7 @@ async def transcribe_chunk(chunk_path: str) -> Optional[str]:
         print(f"Error transcribing chunk: {str(e)}")
         return None
 
-async def transcribe_audio_file(audio_path: str, language: str = "fr-CA") -> Optional[str]:
+async def transcribe_audio_file(audio_path: str, language: str = "fr") -> Optional[str]:
     """Process and transcribe complete audio file."""
     try:
         # Optimize audio for speech recognition
