@@ -211,7 +211,7 @@ sequenceDiagram
 5. **Separate Transcription Service**
    - Decision: Deploy transcription service separately from frontend
    - Rationale: Allows for longer processing times and specialized scaling
-   - Implementation: FastAPI on Heroku or similar platform
+   - Implementation: FastAPI on Koyeb with Micro instances (0.5 vCPU, 512MB RAM)
 
 6. **Real-time Updates**
    - Decision: Use Supabase Realtime for status updates
@@ -226,7 +226,7 @@ sequenceDiagram
 8. **Separate Structured Notes Service**
    - Decision: Create a separate service for structured notes generation
    - Rationale: Separation of concerns, specialized processing for medical notes
-   - Implementation: FastAPI microservice with OpenAI GPT-4 integration
+   - Implementation: FastAPI microservice on Koyeb with OpenAI GPT-4 integration
 
 9. **CORS Middleware for Structured Notes Service**
    - Decision: Implement CORS middleware in the structured notes service
