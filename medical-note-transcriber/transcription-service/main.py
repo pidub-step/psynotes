@@ -158,8 +158,8 @@ async def transcribe_chunk(chunk_path: str, language: str = "fr") -> Optional[st
                 prompt=prompt,
                 response_format="text"
             )
-            # Apply post-processing
-            return post_process_transcription(transcription.text)
+            # Apply post-processing directly to the returned string
+            return post_process_transcription(transcription)
     except Exception as e:
         print(f"Error transcribing chunk: {str(e)}")
         return None
@@ -187,42 +187,33 @@ async def transcribe_audio_file(audio_path: str, language: str = "fr") -> Option
         return None
 
 def optimize_audio_for_speech(audio_path: str) -> str:
-    """Optimize audio file for medical speech recognition, keeping stereo."""
+    """Optimize audio file for medical speech recognition using ffmpeg defaults for rate/channels."""
     output_path = f"{audio_path}_optimized.wav"
     try:
-        # Get original audio info (sample rate, channels)
-        probe_cmd = [
-            'ffprobe', '-v', 'error', '-select_streams', 'a:0',
-            '-show_entries', 'stream=sample_rate,channels',
-            '-of', 'default=noprint_wrappers=1:nokey=1', audio_path
-        ]
-        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True)
-        original_sample_rate, original_channels = probe_result.stdout.strip().split('\n')
-
-        # Keep original sample rate and channels if stereo, otherwise mono
-        channels_to_keep = '2' if int(original_channels) >= 2 else '1'
-        
-        print(f"[*] Optimizing audio: {audio_path} (Rate: {original_sample_rate}, Channels: {original_channels} -> {channels_to_keep})")
-
+        print(f"[*] Optimizing audio: {audio_path}")
+        # Use ffmpeg defaults to preserve sample rate and channels when possible
+        # Apply filters suitable for speech
         subprocess.run([
             'ffmpeg', '-i', audio_path,
-            '-ar', original_sample_rate, # Keep original sample rate
-            '-ac', channels_to_keep,     # Keep stereo if original is stereo
-            '-c:a', 'pcm_s16le',         # 16-bit PCM encoding
-            '-af', 'highpass=f=80,lowpass=f=10000,volume=1.5', # Adjusted filters for potentially wider range
-            '-q:a', '0',                 # Highest quality
-            '-y',                        # Overwrite output file if it exists
+            # '-ar', '16000', # Optional: Resample if needed, but let's try defaults first
+            # '-ac', '1', # Optional: Force mono if needed
+            '-c:a', 'pcm_s16le', # Ensure 16-bit PCM encoding
+            '-af', 'highpass=f=80,lowpass=f=8000,volume=1.5', # Filters for speech clarity
+            '-q:a', '0',         # Highest quality for the codec
+            '-y',                # Overwrite output file if it exists
             output_path
-        ], check=True, capture_output=True)
-        
+        ], check=True, capture_output=True, text=True) # Added text=True for stderr decoding
+
         print(f"[*] Optimized audio saved to: {output_path}")
         return output_path
+    except subprocess.CalledProcessError as e:
+        # Log ffmpeg errors for debugging
+        print(f"Error optimizing audio with ffmpeg: {str(e)}")
+        print(f"ffmpeg stderr: {e.stderr}")
+        return audio_path # Return original path if optimization fails
     except Exception as e:
-        print(f"Error optimizing audio: {str(e)}")
-        # Print ffmpeg stderr if available
-        if isinstance(e, subprocess.CalledProcessError):
-            print(f"ffmpeg stderr: {e.stderr}")
-        return audio_path  # Return original if optimization fails
+        print(f"Unexpected error optimizing audio: {str(e)}")
+        return audio_path # Return original path if optimization fails
 
 @app.get("/")
 async def root():
