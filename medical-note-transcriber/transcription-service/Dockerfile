@@ -9,7 +9,9 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ffmpeg && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    # Verify ffmpeg installation
+    ffmpeg -version
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -21,8 +23,8 @@ COPY . .
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
 
-# Ensure ffmpeg is in PATH for the non-root user
-ENV PATH="/usr/bin:${PATH}"
+# Make sure ffmpeg is accessible
+RUN which ffmpeg
 
 # Switch to non-root user
 USER appuser
