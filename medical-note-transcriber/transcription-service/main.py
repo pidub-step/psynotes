@@ -109,7 +109,7 @@ async def transcribe_chunk(chunk_path: str) -> Optional[str]:
             transcription = openai_client.audio.transcriptions.create(
                 model="gpt-4o-transcribe",
                 file=audio_file,
-                language="fr",  # Changed from fr-CA to fr
+                language="fr",
                 prompt="""Ce qui suit est une transcription médicale en français. 
                 Le texte contient des abréviations et termes médicaux spécifiques comme:
                 MPOC (maladie pulmonaire obstructive chronique)
@@ -129,8 +129,10 @@ async def transcribe_chunk(chunk_path: str) -> Optional[str]:
                 """,
                 response_format="text"
             )
-            # Apply post-processing
-            return post_process_transcription(transcription.text)
+            # Handle the response and apply post-processing
+            if isinstance(transcription, dict):
+                return post_process_transcription(transcription.get('text'))
+            return post_process_transcription(transcription.text if hasattr(transcription, 'text') else str(transcription))
     except Exception as e:
         print(f"Error transcribing chunk: {str(e)}")
         return None
