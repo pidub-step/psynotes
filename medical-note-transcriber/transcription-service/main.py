@@ -12,6 +12,11 @@ import openai
 import requests
 import json
 import re
+from medical_abbreviations import (
+    get_french_medical_prompt,
+    post_process_transcription as enhanced_post_process,
+    get_specialty_terms
+)
 
 # Load environment variables
 load_dotenv()
@@ -33,7 +38,8 @@ app = FastAPI(
 class TranscriptionRequest(BaseModel):
     file_id: str
     file_url: Optional[str] = None
-    language: Optional[str] = "en"  # Default to English if not specified
+    language: Optional[str] = "fr"  # Default to French if not specified
+    specialty: Optional[str] = None  # Optional medical specialty for context-specific processing
 
 class TranscriptionResponse(BaseModel):
     message: str
@@ -84,99 +90,121 @@ def split_audio(audio_path, chunk_size_mb=24) -> List[str]:
         print(f"Error splitting audio: {str(e)}")
         return []
 
-def post_process_transcription(text: str) -> str:
-    """Apply post-processing corrections to transcription."""
-    corrections = {
-        r'toxicoïde affecté': 'trouble schizo-affectif',
-        r'mammiférien': 'membre inférieur',
-        r'planète générale': "pas d'état général",
-        r'syndrome coronaire régulier': 'syndrome coronarien',
-        r'coup de coeur': 'cou, coeur',
-        r'MCRS': 'MC1S',
-        r'VRS': 'MVAS',
-    }
-    
-    processed_text = text
-    for error, correction in corrections.items():
-        processed_text = re.sub(error, correction, processed_text, flags=re.IGNORECASE)
-    
-    return processed_text
+def post_process_transcription(text: str, specialty: str = None) -> str:
+    """
+    Apply post-processing corrections to transcription.
+    This is a wrapper around the enhanced post-processing function from medical_abbreviations.py
+    """
+    return enhanced_post_process(text, specialty)
 
-async def transcribe_chunk(chunk_path: str, language: str = "fr") -> Optional[str]:
-    """Transcribe a single audio chunk using OpenAI API."""
+async def transcribe_chunk(chunk_path: str, language: str = "fr", specialty: str = None) -> Optional[str]:
+    """
+    Transcribe a single audio chunk using OpenAI API.
+    
+    Args:
+        chunk_path: Path to the audio chunk file
+        language: Language code (e.g., "fr" for French)
+        specialty: Optional medical specialty for context-specific processing
+    
+    Returns:
+        Transcribed text or None if an error occurred
+    """
     try:
+        # Determine the best model based on audio characteristics and language
+        model = determine_best_model(chunk_path, language)
+        
         with open(chunk_path, "rb") as audio_file:
-            # Determine prompt based on language
+            # Get the appropriate prompt based on language and specialty
             if language.startswith("fr"):
-                # Enhanced French prompt for medical transcription accuracy
-                prompt = """Ce qui suit est une transcription d'une note médicale dictée en français québécois. 
-                Le texte contient des termes médicaux, des abréviations courantes et potentiellement des anglicismes.
-                Prioriser la précision pour tous les termes médicaux et les noms de médicaments.
-
-                Termes et abréviations fréquents à surveiller :
-                - MPOC (Maladie Pulmonaire Obstructive Chronique)
-                - HTA (Hypertension Artérielle)
-                - MCAS / MC1S (Maladie Coronarienne Athérosclérotique / Sténose)
-                - MVAS (Maladie Vasculaire Athérosclérotique)
-                - DB (Diabète)
-                - FA (Fibrillation Auriculaire)
-                - IC (Insuffisance Cardiaque)
-                - IRC (Insuffisance Rénale Chronique)
-                - IVRS (Infection des Voies Respiratoires Supérieures)
-                - Sx (Symptômes)
-                - Rx (Prescription / Médicaments)
-                - ATCD (Antécédents)
-                - EP (Examen Physique)
-                - MI (Membre Inférieur)
-                - MS (Membre Supérieur)
-                - B1B2 (Bruits cardiaques normaux)
-                - MV (Murmure Vésiculaire)
-                - SAG (Sans Aucun Problème / Stable)
-                - TRS (Trouble Respiratoire du Sommeil)
-                - État général (et non 'état générale')
-                - Syndrome coronarien (et non 'syndrome coronaire')
-                - Trouble schizo-affectif (et non 'toxicoïde affecté')
-                - Cou, coeur (et non 'coup de coeur')
-
-                Instructions importantes :
-                - Transcrire littéralement, y compris les hésitations ('euh') ou répétitions si présentes.
-                - Conserver les anglicismes s'ils sont utilisés par le locuteur (ex: 'check-up', 'feeling').
-                - Utiliser la terminologie médicale précise même si la prononciation est approximative.
-                - Faire attention aux chiffres, dosages de médicaments et unités.
-                - Préserver la distinction entre singulier et pluriel (ex: 'membre inférieur' vs 'membres inférieurs').
-                """
-            else: # Default to English prompt or add more languages as needed
-                prompt = """The following is a medical transcription in English. 
+                prompt = get_french_medical_prompt(specialty)
+            else:  # Default to English prompt or add more languages as needed
+                prompt = """The following is a medical transcription in English.
                 The text contains specific medical abbreviations and terms.
                 Prioritize accuracy for medical terminology, drug names, and dosages.
                 Prioritize accuracy for medical terminology."""
 
             transcription = openai_client.audio.transcriptions.create(
-                model="gpt-4o-transcribe",
+                model=model,
                 file=audio_file,
-                language=language, # Use the provided language parameter
+                language=language,
                 prompt=prompt,
                 response_format="text"
             )
-            # Apply post-processing directly to the returned string
-            return post_process_transcription(transcription)
+            
+            # Apply enhanced post-processing with specialty context
+            return post_process_transcription(transcription, specialty)
     except Exception as e:
         print(f"Error transcribing chunk: {str(e)}")
         return None
 
-async def transcribe_audio_file(audio_path: str, language: str = "fr") -> Optional[str]:
-    """Process and transcribe complete audio file."""
+def determine_best_model(audio_path: str, language: str) -> str:
+    """
+    Determine the best transcription model based on audio characteristics and language.
+    
+    Args:
+        audio_path: Path to the audio file
+        language: Language code
+        
+    Returns:
+        Model name to use for transcription
+    """
+    # Default to gpt-4o-transcribe
+    default_model = "gpt-4o-transcribe"
+    
+    # For French, we might want to use a different model or approach
+    if language.startswith("fr"):
+        # Check audio characteristics
+        try:
+            # Get audio duration
+            probe = subprocess.run([
+                'ffprobe', '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                audio_path
+            ], capture_output=True, text=True)
+            
+            duration = float(probe.stdout.strip())
+            
+            # For very short clips (< 10 seconds), we might want to use a different model
+            # but for now we'll stick with the default as it's the best available
+            
+            # In the future, this function could be expanded to select different models
+            # based on audio characteristics, specialty, or other factors
+            
+            return default_model
+                
+        except Exception as e:
+            print(f"Error determining best model: {str(e)}")
+            return default_model
+    
+    return default_model
+
+async def transcribe_audio_file(audio_path: str, language: str = "fr", specialty: str = None) -> Optional[str]:
+    """
+    Process and transcribe complete audio file.
+    
+    Args:
+        audio_path: Path to the audio file
+        language: Language code (e.g., "fr" for French)
+        specialty: Optional medical specialty for context-specific processing
+        
+    Returns:
+        Transcribed text or None if an error occurred
+    """
     try:
-        # Optimize audio for speech recognition
-        optimized_audio = optimize_audio_for_speech(audio_path)
+        # Optimize audio for speech recognition, with French-specific optimizations if applicable
+        if language.startswith("fr"):
+            optimized_audio = optimize_audio_for_french_speech(audio_path)
+        else:
+            optimized_audio = optimize_audio_for_speech(audio_path)
         
         # Split if larger than 25MB (OpenAI's limit)
         chunks = split_audio(optimized_audio) if os.path.getsize(optimized_audio) > 25 * 1024 * 1024 else [optimized_audio]
         
         transcriptions = []
         for chunk in chunks:
-            # Pass the language parameter to transcribe_chunk
-            text = await transcribe_chunk(chunk, language=language)
+            # Pass the language and specialty parameters to transcribe_chunk
+            text = await transcribe_chunk(chunk, language=language, specialty=specialty)
             if text:
                 transcriptions.append(text)
             
@@ -187,7 +215,15 @@ async def transcribe_audio_file(audio_path: str, language: str = "fr") -> Option
         return None
 
 def optimize_audio_for_speech(audio_path: str) -> str:
-    """Optimize audio file for medical speech recognition using ffmpeg defaults for rate/channels."""
+    """
+    Optimize audio file for general medical speech recognition.
+    
+    Args:
+        audio_path: Path to the audio file
+        
+    Returns:
+        Path to the optimized audio file
+    """
     output_path = f"{audio_path}_optimized.wav"
     try:
         print(f"[*] Optimizing audio: {audio_path}")
@@ -195,14 +231,12 @@ def optimize_audio_for_speech(audio_path: str) -> str:
         # Apply filters suitable for speech
         subprocess.run([
             'ffmpeg', '-i', audio_path,
-            # '-ar', '16000', # Optional: Resample if needed, but let's try defaults first
-            # '-ac', '1', # Optional: Force mono if needed
-            '-c:a', 'pcm_s16le', # Ensure 16-bit PCM encoding
-            '-af', 'highpass=f=80,lowpass=f=8000,volume=1.5', # Filters for speech clarity
-            '-q:a', '0',         # Highest quality for the codec
-            '-y',                # Overwrite output file if it exists
+            '-c:a', 'pcm_s16le',  # Ensure 16-bit PCM encoding
+            '-af', 'highpass=f=80,lowpass=f=8000,volume=1.5',  # Filters for speech clarity
+            '-q:a', '0',          # Highest quality for the codec
+            '-y',                 # Overwrite output file if it exists
             output_path
-        ], check=True, capture_output=True, text=True) # Added text=True for stderr decoding
+        ], check=True, capture_output=True, text=True)
 
         print(f"[*] Optimized audio saved to: {output_path}")
         return output_path
@@ -210,10 +244,75 @@ def optimize_audio_for_speech(audio_path: str) -> str:
         # Log ffmpeg errors for debugging
         print(f"Error optimizing audio with ffmpeg: {str(e)}")
         print(f"ffmpeg stderr: {e.stderr}")
-        return audio_path # Return original path if optimization fails
+        return audio_path  # Return original path if optimization fails
     except Exception as e:
         print(f"Unexpected error optimizing audio: {str(e)}")
-        return audio_path # Return original path if optimization fails
+        return audio_path  # Return original path if optimization fails
+
+def optimize_audio_for_french_speech(audio_path: str, accent="quebec") -> str:
+    """
+    Optimize audio file specifically for French medical speech recognition.
+    
+    Args:
+        audio_path: Path to the audio file
+        accent: French accent type (default: "quebec")
+        
+    Returns:
+        Path to the optimized audio file
+    """
+    output_path = f"{audio_path}_optimized_french.wav"
+    
+    # Define accent-specific parameters
+    accent_params = {
+        "quebec": {
+            "highpass": "70",  # Slightly lower to capture Quebec accent's lower frequencies
+            "lowpass": "8500",  # Slightly higher to capture affrication in Quebec French
+            "compand": "0.3,0.8:-60,-60,-30,-20,-20,-15,-10,-10,0,0",  # Dynamic range compression optimized for Quebec accent
+        },
+        "standard": {
+            "highpass": "80",
+            "lowpass": "8000",
+            "compand": "0.3,0.8:-60,-60,-30,-20,-20,-10,-10,-5,0,0",
+        },
+    }
+    
+    # Use the appropriate accent parameters or default to standard French
+    params = accent_params.get(accent, accent_params["standard"])
+    
+    try:
+        print(f"[*] Optimizing audio for French speech: {audio_path}")
+        
+        # Build the ffmpeg filter chain for French speech optimization
+        filter_chain = [
+            f"highpass=f={params['highpass']}",  # High-pass filter
+            f"lowpass=f={params['lowpass']}",    # Low-pass filter
+            f"compand={params['compand']}",      # Dynamic range compression
+            "volume=1.5",                        # Volume boost
+            "equalizer=f=1000:width_type=o:width=1:g=1", # Slight boost to mid frequencies for clarity
+            "equalizer=f=2500:width_type=o:width=1:g=2", # Boost to enhance consonant clarity
+            "equalizer=f=400:width_type=o:width=1:g=1",  # Slight boost to enhance vowel clarity
+        ]
+        
+        # Execute ffmpeg command with the optimized filter chain
+        subprocess.run([
+            'ffmpeg', '-i', audio_path,
+            '-c:a', 'pcm_s16le',  # 16-bit PCM encoding
+            '-ar', '44100',       # 44.1kHz sample rate
+            '-af', ','.join(filter_chain),
+            '-q:a', '0',          # Highest quality
+            '-y',                 # Overwrite output file if it exists
+            output_path
+        ], check=True, capture_output=True, text=True)
+        
+        print(f"[*] French-optimized audio saved to: {output_path}")
+        return output_path
+    except subprocess.CalledProcessError as e:
+        print(f"Error optimizing audio for French speech: {str(e)}")
+        print(f"ffmpeg stderr: {e.stderr}")
+        return audio_path  # Return original path if optimization fails
+    except Exception as e:
+        print(f"Unexpected error optimizing audio for French speech: {str(e)}")
+        return audio_path  # Return original path if optimization fails
 
 @app.get("/")
 async def root():
@@ -228,12 +327,16 @@ async def transcribe_audio(request: TranscriptionRequest, background_tasks: Back
     if not request.file_url:
         raise HTTPException(status_code=400, detail="file_url is required")
     
+    # Extract specialty from the request if available
+    specialty = request.specialty if hasattr(request, 'specialty') else None
+    
     # Queue transcription task in background
     background_tasks.add_task(
-        process_transcription, 
+        process_transcription,
         file_id=request.file_id,
         file_url=request.file_url,
-        language=request.language
+        language=request.language,
+        specialty=specialty
     )
     
     return {
@@ -271,8 +374,16 @@ async def transcribe_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def process_transcription(file_id: str, file_url: str, language: str = "fr-CA"):
-    """Process the transcription in the background"""
+async def process_transcription(file_id: str, file_url: str, language: str = "fr-CA", specialty: str = None):
+    """
+    Process the transcription in the background
+    
+    Args:
+        file_id: ID of the file to transcribe
+        file_url: URL of the file to transcribe
+        language: Language code (e.g., "fr-CA" for Canadian French)
+        specialty: Optional medical specialty for context-specific processing
+    """
     try:
         print(f"Starting transcription for {file_id}")
         
@@ -285,8 +396,8 @@ async def process_transcription(file_id: str, file_url: str, language: str = "fr
             temp_file.write(response.content)
         
         try:
-            # Transcribe the file, passing the selected language
-            transcription_text = await transcribe_audio_file(temp_file_path, language=language)
+            # Transcribe the file, passing the selected language and specialty
+            transcription_text = await transcribe_audio_file(temp_file_path, language=language, specialty=specialty)
             
             if not transcription_text:
                 raise Exception("Failed to transcribe audio")
