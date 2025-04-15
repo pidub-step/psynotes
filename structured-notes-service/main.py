@@ -57,7 +57,9 @@ class StructureNoteResponse(BaseModel):
 async def generate_structured_note(transcription_text: str) -> str:
     """Generates structured note using OpenAI API."""
     prompt = f"""
-    You are a medical assistant tasked with structuring a doctor's note into a specific format. Given the following transcribed note:
+    You are an experienced medical transcriptionist specializing in French Canadian medical terminology and formal clinical documentation. Your task is to structure a doctor's transcribed note into a specific format.
+
+    Given the following transcribed note:
 
     {transcription_text}
 
@@ -70,33 +72,70 @@ async def generate_structured_note(transcription_text: str) -> str:
     Motif : [motif principal de consultation]
 
     Antécédents médicaux :
-
-    [liste des antécédents médicaux]
+    • [antécédent 1]
+    • [antécédent 2]
+    • [etc.]
 
     Allergies : [allergies connues, utiliser "Pas d'allergies connues" si aucune]
 
     Médication actuelle :
-
-    [liste des médicaments actuels]
+    • [médicament 1]
+    • [médicament 2]
+    • [etc.]
 
     Histoire actuelle :
-
-    [description détaillée du problème actuel]
+    [description détaillée du problème actuel en format paragraphe]
 
     Examen physique :
-
-    [résultats de l'examen physique - si 'normal' est mentionné, utiliser le format standard]
+    [résultats de l'examen physique en format paragraphe]
 
     Impression clinique :
-
-    [diagnostics probables]
+    • [diagnostic probable 1]
+    • [diagnostic probable 2]
+    • [etc.]
 
     Plan :
+    • [examen/traitement prévu 1]
+    • [examen/traitement prévu 2]
+    • [etc.]
 
-    [examens et traitements prévus]
+    Format each section as follows:
+    - Use bullet points (•) for: Antécédents médicaux, Allergies, Médication actuelle, Impression clinique, Plan
+    - Use paragraph format for: Histoire actuelle, Examen physique
+    - Ensure consistent formatting within each section
+    - For bullet point sections, place each item on a new line with a bullet point (•)
+    - If a section has only one item, still use a bullet point for consistency
+
+    Medical Terminology Guidelines:
+    - Use formal medical terminology consistently throughout the note
+    - Maintain standard medical abbreviations as listed below
+    - Ensure consistency in terminology between sections
+    - Use precise medical terms rather than colloquial expressions
+    - Maintain the clinical tone appropriate for medical documentation
+
+    Common medical abbreviations to use consistently:
+    - MPOC (Maladie Pulmonaire Obstructive Chronique)
+    - HTA (Hypertension Artérielle)
+    - MCAS / MC1S (Maladie Coronarienne Athérosclérotique / Sténose)
+    - MVAS (Maladie Vasculaire Athérosclérotique)
+    - DB (Diabète)
+    - FA (Fibrillation Auriculaire)
+    - IC (Insuffisance Cardiaque)
+    - IRC (Insuffisance Rénale Chronique)
+    - IVRS (Infection des Voies Respiratoires Supérieures)
+    - Sx (Symptômes)
+    - Rx (Prescription / Médicaments)
+    - ATCD (Antécédents)
+    - EP (Examen Physique)
+    - MI (Membre Inférieur)
+    - MS (Membre Supérieur)
+    - B1B2 (Bruits cardiaques normaux)
+    - MV (Murmure Vésiculaire)
+    - SAG (Sans Aucun Problème / Stable)
+    - TRS (Trouble Respiratoire du Sommeil)
 
     Important instructions:
-    - If the physical exam is mentioned as 'normal', use exactly this text for Examen physique: 'Examen cardiovasculaire normal\nExamen respiratoire normal\nPas de signes cliniques alarmants'
+    - If the physical exam is mentioned as 'normal', use exactly this text for Examen physique: 'Examen cardiovasculaire normal. Examen respiratoire normal. Pas de signes cliniques alarmants.'
     - In the Antécédents médicaux section, transform 'hypertension' to 'HTA'.
     - Use "Pas d'allergies connues" for Allergies if no allergies are mentioned, instead of "Ø".
     - Be precise and use exactly the formats requested.
@@ -106,9 +145,9 @@ async def generate_structured_note(transcription_text: str) -> str:
     """
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4.1-nano",
             messages=[
-                {"role": "system", "content": "You are a helpful medical assistant."},
+                {"role": "system", "content": "You are an experienced medical transcriptionist specializing in French Canadian medical documentation."},
                 {"role": "user", "content": prompt}
             ]
         )
